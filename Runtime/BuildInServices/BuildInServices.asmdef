@@ -1,0 +1,18 @@
+{
+    "name": "BuildInServices",
+    "rootNamespace": "",
+    "references": [
+        "GUID:f3a93a1ce3c66fd459d9ee99554e4ecf",
+        "GUID:33158ebef64ad3045ae57230268774e2",
+        "GUID:2c10061dcb1a2324c9e394203d2ae703"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

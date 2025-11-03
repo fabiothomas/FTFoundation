@@ -1,0 +1,15 @@
+using UnityEngine;
+
+namespace #NAMESPACE#
+{
+    [Service(typeof(I#SCRIPTNAME#), ServiceType.TRANSIENT)]
+    public class #SCRIPTNAME# : I#SCRIPTNAME#
+    {
+        void Inject()
+        {
+            #NOTRIM#
+        }
+
+        #NOTRIM#
+    }
+}

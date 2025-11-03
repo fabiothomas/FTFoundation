@@ -1,0 +1,27 @@
+using UnityEngine;
+
+namespace #NAMESPACE#
+{
+    public class #SCRIPTNAME# : MonoBehaviour
+    {
+        void Inject()
+        {
+            #NOTRIM#
+        }
+
+        void Awake()
+        {
+            ServiceProvider.Inject(this);
+        }
+
+        void Start()
+        {
+            #NOTRIM#
+        }
+
+        void Update()
+        {
+            #NOTRIM#
+        }
+    }
+}
