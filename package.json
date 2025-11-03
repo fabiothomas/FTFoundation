@@ -1,0 +1,22 @@
+{
+    "name": "com.ft.foundation",
+    "version": "1.0.0",
+    "displayName": "FT Foundation",
+    "description": "Foundational Unity package for assembly separation trough service injection",
+    "unity": "6000.0",
+    "documentationUrl": "https://example.com/",
+    "dependencies": {},
+    "keywords": [
+        "unity",
+        "dependency",
+        "injection",
+        "dependency-injection",
+        "service",
+        "services",
+        "precompiled",
+        "assemblies"
+    ],
+    "author": {
+        "name": "fabiothomas"
+    }
+}

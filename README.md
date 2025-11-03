@@ -1,2 +1,2 @@
 # FTFoundation
-Foundational Unity package for service injection and assembly separation
+Foundational Unity package for assembly separation trough service injection
