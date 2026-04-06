@@ -3,81 +3,156 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using FTFoundation.Core.Validation;
 using UnityEngine;
 
 namespace FTFoundation.Core
 {
   public static class ServiceProvider
   {
+    // Single-winner service resolution: interface → winning concrete type
     private static readonly Dictionary<Type, Type> serviceCache = new();
+
+    // All profile-matched concrete types per interface, ordered by priority (for IReadOnlyList<T> injection)
+    private static readonly Dictionary<Type, List<Type>> multiServiceCache = new();
 
     private static readonly Dictionary<Type, object> singletons = new();
     private static readonly Dictionary<int, Dictionary<Type, object>> scoped = new();
 
+    // Singleton/scoped stores for non-winner types in multi-service injection
+    private static readonly Dictionary<Type, object> multiSingletons = new();
+    private static readonly Dictionary<int, Dictionary<Type, object>> multiScoped = new();
+
+    // Keyed by concrete implementation type (not interface)
     private static readonly Dictionary<Type, Func<object>> serviceFactories = new();
     private static readonly Dictionary<Type, Action<object, int, ServiceTargetData>> injectionActions = new();
+
+    private struct ServiceCandidate
+    {
+      public Type ImplementationType;
+      public ServiceAttribute ServiceAttribute;
+      public BuildTargetProfile Profiles;
+      public BuildTargetPlatform Platforms;
+      public int Priority;
+      public bool IsFallback;
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
     private static void InitializeServiceProvider()
     {
       // resetting static values in case of 'domain reloading' being disabled
       serviceCache.Clear();
+      multiServiceCache.Clear();
       singletons.Clear();
       scoped.Clear();
+      multiSingletons.Clear();
+      multiScoped.Clear();
       serviceFactories.Clear();
       injectionActions.Clear();
 
       List<Type> servicesToInstantiate = new();
 
-      // handle every assembly containing services
-      var serviceAssemblies = AppDomain.CurrentDomain.GetAssemblies()
-        .Where(a => a.GetCustomAttribute<ServiceAssemblyAttribute>() != null);
+      BuildTargetProfile currentProfile = BuildProfileDetector.Current;
+      BuildTargetPlatform currentPlatform = BuildPlatformDetector.Current;
 
-      foreach (Assembly assembly in serviceAssemblies)
+      // ── First pass: collect every [Service]-decorated type grouped by interface ──────────────
+      var allCandidates = new Dictionary<Type, List<ServiceCandidate>>();
+
+      foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
       {
-        var serviceTypes = assembly.GetTypes();
+        if (assembly.GetCustomAttribute<ServiceAssemblyAttribute>() == null) continue;
 
-        foreach (var t in serviceTypes)
+        foreach (var t in assembly.GetTypes())
         {
-          ServiceAttribute attribute = (ServiceAttribute)t.GetCustomAttribute(typeof(ServiceAttribute), inherit: true);
+          ServiceAttribute svcAttr = (ServiceAttribute)t.GetCustomAttribute(typeof(ServiceAttribute), inherit: true);
+          if (svcAttr == null) continue;
 
-          // skip type if it doesn't utilize the ServiceAttribute
-          if (attribute == null) continue;
-
-          // reject type if type is struct but serviceType is not transient [currently disabled as I'm not allowing structs anyway but leaving this in case struct services become interesting in the future]
-          // if (!t.IsClass && !(attribute.Type == ServiceType.TRANSIENT)) throw new UnityException($"Service '{t.Name}' is a struct and therefore must be registered as a transient service");
-
-          serviceCache[attribute.Interface] = t;
-
-          if (t.GetCustomAttributes(typeof(InstantiateOnStartupAttribute), inherit: true).Any())
+          ServiceCandidate candidate = new()
           {
-            if (attribute.Type == ServiceType.SINGLETON) servicesToInstantiate.Add(t);
-            else Debug.LogWarning($"InstantiateOnStartupAttribute is not valid on {t.Name} because it is not a singleton service");
-          }
-          else
+            ImplementationType = t,
+            ServiceAttribute = svcAttr,
+            Profiles = t.GetCustomAttribute<ServiceBuildProfileAttribute>()?.Profiles ?? BuildTargetProfile.All,
+            Platforms = t.GetCustomAttribute<ServiceBuildPlatformAttribute>()?.Platforms ?? BuildTargetPlatform.All,
+            Priority = t.GetCustomAttribute<ServicePriorityAttribute>()?.Priority ?? 0,
+            IsFallback = t.GetCustomAttribute<ServiceFallbackAttribute>() != null
+          };
+
+          if (!allCandidates.TryGetValue(svcAttr.Interface, out var list))
           {
-            PrecompileServiceFactory(attribute.Interface, t);
+            list = new List<ServiceCandidate>();
+            allCandidates[svcAttr.Interface] = list;
           }
-          PrecompileInjectionAction(t);
+          list.Add(candidate);
         }
       }
 
-      // handle every assembly containing injection targets
-      var injectionTargetAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(a => a.GetCustomAttribute<InjectionTargetAssemblyAttribute>() != null);
-
-      foreach (var assembly in injectionTargetAssemblies)
+      // ── Second pass: profile filter + conflict resolution per interface ────────────────────
+      foreach (var (iface, candidates) in allCandidates)
       {
-        var injectionTargetTypes = assembly.GetTypes();
+        var profileMatched = candidates
+          .Where(c => !c.IsFallback && c.Profiles.HasFlag(currentProfile) && (c.Platforms & currentPlatform) != 0)
+          .OrderByDescending(c => c.Priority)
+          .ToList();
 
-        foreach (var t in injectionTargetTypes)
+        var fallbacks = candidates
+          .Where(c => c.IsFallback && c.Profiles.HasFlag(currentProfile) && (c.Platforms & currentPlatform) != 0)
+          .OrderByDescending(c => c.Priority)
+          .ToList();
+
+        // Warn when multiple non-fallback candidates share the highest priority
+        if (profileMatched.Count > 1)
+        {
+          int topPriority = profileMatched[0].Priority;
+          var tied = profileMatched.Where(c => c.Priority == topPriority).ToList();
+          if (tied.Count > 1)
+          {
+            var names = string.Join(", ", tied.Select(c => c.ImplementationType.Name));
+            Debug.LogWarning($"[ServiceProvider] Multiple services for '{iface.Name}' share priority {topPriority} in profile '{currentProfile}': [{names}]. Using '{profileMatched[0].ImplementationType.Name}' for single injection.");
+          }
+        }
+
+        // All profile-matched types are available for IReadOnlyList<T> injection
+        if (profileMatched.Count > 0)
+          multiServiceCache[iface] = profileMatched.Select(c => c.ImplementationType).ToList();
+
+        // Single-winner: best profile-matched → best fallback → nothing (interface skipped this build)
+        ServiceCandidate winner = profileMatched.Count > 0
+          ? profileMatched[0]
+          : (fallbacks.Count > 0 ? fallbacks[0] : default);
+
+        if (winner.ImplementationType == null) continue;
+
+        serviceCache[iface] = winner.ImplementationType;
+        PrecompileServiceFactory(winner.ImplementationType);
+        PrecompileInjectionAction(winner.ImplementationType);
+
+        // Pre-compile factories/actions for non-winner profile-matched types (needed for multi-injection)
+        foreach (var c in profileMatched.Skip(1))
+        {
+          PrecompileServiceFactory(c.ImplementationType);
+          PrecompileInjectionAction(c.ImplementationType);
+        }
+
+        if (winner.ImplementationType.GetCustomAttributes(typeof(InstantiateOnStartupAttribute), inherit: true).Any())
+        {
+          if (winner.ServiceAttribute.Type == ServiceType.SINGLETON) servicesToInstantiate.Add(winner.ImplementationType);
+          else Debug.LogWarning($"[ServiceProvider] InstantiateOnStartupAttribute is not valid on {winner.ImplementationType.Name} because it is not a singleton service");
+        }
+      }
+
+      // ── Handle every assembly containing injection targets (MonoBehaviours) ──────────────
+      foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+      {
+        if (assembly.GetCustomAttribute<InjectionTargetAssemblyAttribute>() == null) continue;
+
+        foreach (var t in assembly.GetTypes())
         {
           if (!t.IsSubclassOf(typeof(MonoBehaviour))) continue;
-
           PrecompileInjectionAction(t);
         }
       }
 
-      // handle every singleton service marked for injection on startup
+      // ── Eagerly instantiate startup singletons ────────────────────────────────────────────
       foreach (var t in servicesToInstantiate)
       {
         ServiceAttribute attribute = (ServiceAttribute)t.GetCustomAttribute(typeof(ServiceAttribute), inherit: true);
@@ -91,19 +166,25 @@ namespace FTFoundation.Core
 
         singletons.Add(attribute.Interface, obj);
       }
+
+      ServiceStackValidator.Validate(serviceCache, currentProfile);
     }
 
-    // a service factory is used to create an instance of a given service object
-    private static void PrecompileServiceFactory(Type interfaceType, Type implementationType)
+    // Factory is keyed by concrete implementation type so multiple implementations of the same
+    // interface can each have their own factory.
+    private static void PrecompileServiceFactory(Type implementationType)
     {
+      if (serviceFactories.ContainsKey(implementationType)) return;
       var newExpression = Expression.New(implementationType);
       var lambda = Expression.Lambda<Func<object>>(newExpression);
-      serviceFactories[interfaceType] = lambda.Compile(preferInterpretation: false);
+      serviceFactories[implementationType] = lambda.Compile(preferInterpretation: false);
     }
 
     // an injection action is used to scan for injectable properties and method parameters and perform the injection.
     private static void PrecompileInjectionAction(Type injectionObjectType)
     {
+      if (injectionActions.ContainsKey(injectionObjectType)) return;
+
       var injectableProperties = injectionObjectType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic)
         .Where(p => Attribute.IsDefined(p, typeof(InjectAttribute)))
         .ToList();
@@ -127,7 +208,9 @@ namespace FTFoundation.Core
 
       foreach (var property in injectableProperties)
       {
-        // get the service creation expression
+        bool isOptional = property.GetCustomAttribute<InjectAttribute>()?.Optional ?? false;
+
+        // get the service creation expression — passes optional flag so missing services can inject null
         var serviceCall = Expression.Call(
           typeof(ServiceProvider),
           nameof(GetService),
@@ -136,7 +219,8 @@ namespace FTFoundation.Core
           {
             Expression.Constant(property.PropertyType),
             sceneIndexParameter,
-            serviceTargetDataParameter
+            serviceTargetDataParameter,
+            Expression.Constant(isOptional)
           }
         );
 
@@ -154,7 +238,7 @@ namespace FTFoundation.Core
       {
         var parameters = injectMethod.GetParameters();
 
-        // create all injection parameters
+        // create all injection parameters; method parameters are never optional
         var args = parameters.Select(p =>
           Expression.Convert(
             Expression.Call(
@@ -165,7 +249,8 @@ namespace FTFoundation.Core
               {
                 Expression.Constant(p.ParameterType),
                 sceneIndexParameter,
-                serviceTargetDataParameter
+                serviceTargetDataParameter,
+                Expression.Constant(false)
               }
             ),
             p.ParameterType
@@ -219,13 +304,26 @@ namespace FTFoundation.Core
       }
     }
 
-    private static object GetService(Type _interface, int sceneIndex, ServiceTargetData target)
+    private static object? GetService(Type _interface, int sceneIndex, ServiceTargetData target, bool optional)
     {
       if (_interface == typeof(IServiceTargetData)) return target;
 
+      // IReadOnlyList<T>, IEnumerable<T>, or List<T> → return all profile-active implementations
+      if (_interface.IsGenericType)
+      {
+        var genericDef = _interface.GetGenericTypeDefinition();
+        if (genericDef == typeof(IReadOnlyList<>) ||
+            genericDef == typeof(IEnumerable<>) ||
+            genericDef == typeof(List<>))
+        {
+          return GetMultiService(_interface.GetGenericArguments()[0], sceneIndex, target);
+        }
+      }
+
       if (!serviceCache.TryGetValue(_interface, out Type service))
       {
-        throw new UnityException($"Service '{_interface.Name}' is not a registered service. Please ensure the service is created correctly");
+        if (optional) return null;
+        throw new UnityException($"Service '{_interface.Name}' is not a registered service. Please ensure the service is created correctly or mark the dependency as optional if it is not required.");
       }
 
       ServiceAttribute attribute = (ServiceAttribute)service.GetCustomAttribute(typeof(ServiceAttribute), inherit: true);
@@ -262,11 +360,75 @@ namespace FTFoundation.Core
       }
     }
 
+    // Returns a List<T> (cast to object) containing instances of every profile-active implementation
+    // of elementType, respecting each implementation's service lifetime.
+    private static object GetMultiService(Type elementType, int sceneIndex, ServiceTargetData target)
+    {
+      var listType = typeof(List<>).MakeGenericType(elementType);
+      var list = (System.Collections.IList)Activator.CreateInstance(listType)!;
+
+      if (!multiServiceCache.TryGetValue(elementType, out var serviceTypes))
+        return list;
+
+      foreach (var concreteType in serviceTypes)
+      {
+        ServiceAttribute attr = (ServiceAttribute)concreteType.GetCustomAttribute(typeof(ServiceAttribute), inherit: true);
+
+        object instance;
+        switch (attr.Type)
+        {
+          case ServiceType.TRANSIENT:
+            instance = CreateService(concreteType, elementType, sceneIndex, ServiceTargetDataType.NONE, target);
+            break;
+
+          case ServiceType.SINGLETON:
+            // Reuse the single-injection winner's cached instance when it is the same concrete type
+            if (serviceCache.TryGetValue(elementType, out var winner) && winner == concreteType &&
+                singletons.TryGetValue(elementType, out var winnerInst))
+            {
+              instance = winnerInst;
+            }
+            else if (multiSingletons.TryGetValue(concreteType, out var cachedInst))
+            {
+              instance = cachedInst;
+            }
+            else
+            {
+              instance = CreateService(concreteType, elementType, sceneIndex, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
+              multiSingletons[concreteType] = instance;
+            }
+            break;
+
+          case ServiceType.SCOPED:
+            if (sceneIndex < 0) throw new UnityException($"Scoped service '{elementType.Name}' cannot be injected into a singleton");
+
+            if (multiScoped.TryGetValue(sceneIndex, out var multiScopedDict) && multiScopedDict.TryGetValue(concreteType, out var scopedInst))
+            {
+              instance = scopedInst;
+            }
+            else
+            {
+              instance = CreateService(concreteType, elementType, sceneIndex, ServiceTargetDataType.SCOPED, ServiceTargetData.EmptyServiceTargetData());
+              if (multiScopedDict != null) multiScopedDict[concreteType] = instance;
+              else multiScoped[sceneIndex] = new Dictionary<Type, object> { { concreteType, instance } };
+            }
+            break;
+
+          default:
+            throw new UnityException($"Unknown service type for '{concreteType.Name}'");
+        }
+
+        list.Add(instance);
+      }
+
+      return list;
+    }
+
     private static object CreateService(Type service, Type serviceInterface, int sceneIndex, ServiceTargetDataType dataType, ServiceTargetData target)
     {
-      if (!serviceFactories.TryGetValue(serviceInterface, out var factory))
+      if (!serviceFactories.TryGetValue(service, out var factory))
       {
-        throw new InvalidOperationException($"No implementation registered for {serviceInterface.Name}");
+        throw new InvalidOperationException($"No factory compiled for '{service.Name}'. Ensure the type is registered as a service.");
       }
 
       var obj = factory();

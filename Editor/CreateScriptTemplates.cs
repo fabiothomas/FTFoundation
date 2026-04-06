@@ -8,7 +8,7 @@ namespace FTFoundation.Editor
         [MenuItem("Assets/Create/Foundation/MonoBehaviour", priority = 0)]
         private static void CreateServiceMonoBehaviourMenuItem()
         {
-            string templatePath = "Assets/Scripts/Foundation/Templates/ServiceMonobehaviour.cs.txt";
+            string templatePath = "Assets/FTFoundation/Editor/ServiceMonobehaviour.cs.txt";
 
             ProjectWindowUtil.CreateScriptAssetFromTemplateFile(templatePath, "NewBehaviour.cs");
         }
@@ -16,7 +16,7 @@ namespace FTFoundation.Editor
         [MenuItem("Assets/Create/Foundation/Service", priority = 1)]
         private static void CreateServiceMenuItem()
         {
-            string templatePath = "Assets/Scripts/Foundation/Templates/Service.cs.txt";
+            string templatePath = "Assets/FTFoundation/Editor/Service.cs.txt";
 
             ProjectWindowUtil.CreateScriptAssetFromTemplateFile(templatePath, "NewService.cs");
         }
@@ -24,7 +24,7 @@ namespace FTFoundation.Editor
         [MenuItem("Assets/Create/Foundation/ServiceInterface", priority = 2)]
         private static void CreateServiceInterfaceMenuItem()
         {
-            string templatePath = "Assets/Scripts/Foundation/Templates/ServiceInterface.cs.txt";
+            string templatePath = "Assets/FTFoundation/Editor/ServiceInterface.cs.txt";
 
             ProjectWindowUtil.CreateScriptAssetFromTemplateFile(templatePath, "INewService.cs");
         }
