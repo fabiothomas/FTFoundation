@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
 
-namespace Scripts.References.Interfaces
+namespace FTFoundation.BuildInReferences
 {
     public interface IReferenceService
     {

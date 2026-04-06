@@ -1,11 +1,10 @@
 using System.Collections.Generic;
-using Scripts.Foundation.Attributes;
-using Scripts.References.Interfaces;
-using Scripts.References.Events;
+using FTFoundation.BuildInReferences;
+using FTFoundation.Core;
 using UnityEngine;
 using UnityEngine.Events;
 
-namespace Scripts.Services.FoundationServices
+namespace FTFoundation.BuildInServices
 {
     [Service(typeof(IEventService), ServiceType.SINGLETON)]
     public class EventService : IEventService

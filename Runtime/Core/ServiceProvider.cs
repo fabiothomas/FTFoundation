@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using Scripts.Foundation.Attributes;
 using UnityEngine;
 
-namespace Scripts.Foundation
+namespace FTFoundation.Core
 {
     public static class ServiceProvider
     {

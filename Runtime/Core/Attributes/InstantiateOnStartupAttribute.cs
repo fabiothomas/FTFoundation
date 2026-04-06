@@ -1,6 +1,6 @@
 using System;
 
-namespace Scripts.Foundation.Attributes
+namespace FTFoundation.Core
 {
     /// <summary>
     /// <para> Ensures that the singleton service is instantiated on startup instead of it's first injection </para>

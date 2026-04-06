@@ -1,7 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 
-namespace Scripts.Foundation.Templates
+namespace FTFoundation.Editor
 {
     internal static class CreateScriptTemplates
     {

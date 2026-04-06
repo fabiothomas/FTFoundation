@@ -1,9 +1,8 @@
-using Scripts.Foundation;
-using Scripts.Foundation.Attributes;
-using Scripts.References.Interfaces;
+using FTFoundation.Core;
+using FTFoundation.BuildInReferences;
 using UnityEngine;
 
-namespace Scripts.Services.FoundationServices
+namespace FTFoundation.BuildInServices
 {
 
     [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]

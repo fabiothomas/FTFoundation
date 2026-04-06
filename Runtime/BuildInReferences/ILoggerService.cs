@@ -1,4 +1,4 @@
-namespace Scripts.References.Interfaces
+namespace FTFoundation.BuildInReferences
 {
     public interface ILoggerService
     {

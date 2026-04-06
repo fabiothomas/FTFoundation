@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Scripts.Foundation
+namespace FTFoundation.Core
 {
     internal record ServiceTargetData : IServiceTargetData
     {

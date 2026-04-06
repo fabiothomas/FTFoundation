@@ -1,6 +1,6 @@
 using System;
 
-namespace Scripts.Foundation.Attributes
+namespace FTFoundation.Core
 {
     /// <summary>
     /// This attribute defines that an assembly contains content that can be injected 

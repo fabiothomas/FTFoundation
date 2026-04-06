@@ -1,3 +1,3 @@
-using Scripts.Foundation.Attributes;
+using FTFoundation.Core;
 
 [assembly: ServiceAssembly]

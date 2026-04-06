@@ -1,6 +1,6 @@
 using System;
 
-namespace Scripts.Foundation
+namespace FTFoundation.Core
 {
     public interface IServiceTargetData
     {

@@ -1,7 +1,7 @@
 using UnityEngine.Events;
-using Scripts.References.Events;
+using FTFoundation.BuildInReferences;
 
-namespace Scripts.References.Interfaces
+namespace FTFoundation.BuildInReferences
 {
     /// <summary>
     /// <para>A service used for event management.</para>
