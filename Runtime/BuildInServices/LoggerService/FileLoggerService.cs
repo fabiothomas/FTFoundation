@@ -6,6 +6,7 @@ namespace FTFoundation.BuildInServices
 {
 
   [ServiceBuildProfile(BuildTargetProfile.Production | BuildTargetProfile.Staging)]
+  [ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
   [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
   public class FileLoggerService : ILoggerService
   {

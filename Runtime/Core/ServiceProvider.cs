@@ -107,7 +107,7 @@ namespace FTFoundation.Core
           if (tied.Count > 1)
           {
             var names = string.Join(", ", tied.Select(c => c.ImplementationType.Name));
-            Debug.LogWarning($"[ServiceProvider] Multiple services for '{iface.Name}' share priority {topPriority} in profile '{currentProfile}': [{names}]. Using '{profileMatched[0].ImplementationType.Name}' for single injection.");
+            SendWarning($"Multiple services for '{iface.Name}' share priority {topPriority} in profile '{currentProfile}': [{names}]. Using '{profileMatched[0].ImplementationType.Name}' for single injection.");
           }
         }
 
@@ -136,7 +136,7 @@ namespace FTFoundation.Core
         if (winner.ImplementationType.GetCustomAttributes(typeof(InstantiateOnStartupAttribute), inherit: true).Any())
         {
           if (winner.ServiceAttribute.Type == ServiceType.SINGLETON) servicesToInstantiate.Add(winner.ImplementationType);
-          else Debug.LogWarning($"[ServiceProvider] InstantiateOnStartupAttribute is not valid on {winner.ImplementationType.Name} because it is not a singleton service");
+          else SendWarning($"InstantiateOnStartupAttribute is not valid on {winner.ImplementationType.Name} because it is not a singleton service");
         }
       }
 
@@ -438,6 +438,14 @@ namespace FTFoundation.Core
       InjectDependencies(obj, sceneIndex, target);
 
       return obj;
+    }
+
+    [HideInCallstack]
+    private static void SendWarning(string message)
+    {
+#if UNITY_EDITOR
+      Debug.LogWarning($"<color=#f22800><b>[ServiceProvider]</b></color> <color=#cc9b05ff>{message}</color>");
+#endif
     }
   }
 }

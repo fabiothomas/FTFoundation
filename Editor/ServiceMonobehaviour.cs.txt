@@ -1,3 +1,5 @@
+using FTFoundation.BuildInReferences;
+using FTFoundation.Core;
 using UnityEngine;
 
 namespace #NAMESPACE#
