@@ -1,6 +1,8 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using FTFoundation.BuildInReferences;
 using FTFoundation.Core.Validation;
 using UnityEngine;
 
@@ -23,14 +25,15 @@ namespace FTFoundation.Core
       ServiceResolver.Clear();
       ServiceCompiler.Clear();
 
+      var problems = new List<ProblemDetail>();
+
       BuildTargetProfile currentProfile = BuildProfileDetector.Current;
       BuildTargetPlatform currentPlatform = BuildPlatformDetector.Current;
 
       // ── Resolve service candidates ────────────────────────────────────────────────────────
       var resolved = ServiceCandidateResolver.Resolve(currentProfile, currentPlatform);
 
-      foreach (var warning in resolved.Warnings)
-        SendWarning(warning);
+      problems.AddRange(resolved.Warnings);
 
       // ── Populate lookup caches ────────────────────────────────────────────────────────────
       foreach (var (iface, winnerType) in resolved.Winners)
@@ -40,18 +43,37 @@ namespace FTFoundation.Core
         multiServiceCache[iface] = matchedTypes;
 
       // ── Pre-compile factories and injection actions ───────────────────────────────────────
-      foreach (var (_, winnerType) in resolved.Winners)
+      foreach (var (iface, winnerType) in resolved.Winners)
       {
-        ServiceCompiler.PrecompileFactory(winnerType);
-        ServiceCompiler.PrecompileInjectionAction(winnerType);
+        try
+        {
+          ServiceCompiler.PrecompileFactory(winnerType);
+          ServiceCompiler.PrecompileInjectionAction(winnerType);
+        }
+        catch (Exception e)
+        {
+          serviceCache.Remove(iface);
+          multiServiceCache.Remove(iface);
+          problems.Add(new ProblemDetail(ProblemDetailType.ERROR, $"Failed to compile service '{winnerType.Name}' for '{iface.Name}': {e.Message}"));
+        }
       }
 
-      foreach (var (_, matchedTypes) in resolved.AllMatched)
+      foreach (var (iface, matchedTypes) in resolved.AllMatched)
       {
-        foreach (var type in matchedTypes)
+        for (int i = matchedTypes.Count - 1; i >= 0; i--)
         {
-          ServiceCompiler.PrecompileFactory(type);
-          ServiceCompiler.PrecompileInjectionAction(type);
+          var type = matchedTypes[i];
+          try
+          {
+            ServiceCompiler.PrecompileFactory(type);
+            ServiceCompiler.PrecompileInjectionAction(type);
+          }
+          catch (Exception e)
+          {
+            matchedTypes.RemoveAt(i);
+            if (matchedTypes.Count == 0) multiServiceCache.Remove(iface);
+            problems.Add(new ProblemDetail(ProblemDetailType.ERROR, $"Failed to compile multi-service '{type.Name}' for '{iface.Name}': {e.Message}"));
+          }
         }
       }
 
@@ -63,7 +85,14 @@ namespace FTFoundation.Core
         foreach (var t in assembly.GetTypes())
         {
           if (!t.IsSubclassOf(typeof(MonoBehaviour))) continue;
-          ServiceCompiler.PrecompileInjectionAction(t);
+          try
+          {
+            ServiceCompiler.PrecompileInjectionAction(t);
+          }
+          catch (Exception e)
+          {
+            problems.Add(new ProblemDetail(ProblemDetailType.ERROR, $"Failed to compile injection action for MonoBehaviour '{t.Name}': {e.Message}"));
+          }
         }
       }
 
@@ -73,16 +102,25 @@ namespace FTFoundation.Core
         ServiceAttribute attribute = (ServiceAttribute)t.GetCustomAttribute(typeof(ServiceAttribute), inherit: true);
         if (attribute == null) continue;
 
-        var obj = Activator.CreateInstance(t);
-
-        ServiceTargetData target = new(t.Name, ServiceTargetDataType.SINGLETON, t, obj);
-
-        InjectDependencies(obj, -1, target);
-
-        ServiceResolver.RegisterStartupSingleton(attribute.Interface, obj);
+        try
+        {
+          var obj = Activator.CreateInstance(t);
+          ServiceTargetData target = new(t.Name, ServiceTargetDataType.SINGLETON, t, obj);
+          InjectDependencies(obj, -1, target);
+          ServiceResolver.RegisterStartupSingleton(attribute.Interface, obj);
+        }
+        catch (Exception e)
+        {
+          serviceCache.Remove(attribute.Interface);
+          problems.Add(new ProblemDetail(ProblemDetailType.ERROR, $"Failed to instantiate startup singleton '{t.Name}': {e.Message}"));
+        }
       }
 
-      ServiceStackValidator.Validate(serviceCache, currentProfile);
+      ServiceStackValidator.Validate(serviceCache, multiServiceCache, currentProfile, problems);
+
+      // ── Flush collected diagnostics via ILoggerService ───────────────────────────────────
+      if (problems.Count > 0)
+        FlushProblems(problems);
     }
 
     /// <summary>
@@ -108,12 +146,28 @@ namespace FTFoundation.Core
       }
     }
 
-    [HideInCallstack]
-    private static void SendWarning(string message)
+    private static void FlushProblems(List<ProblemDetail> problems)
     {
-#if UNITY_EDITOR
-      Debug.LogWarning($"<color=#f22800><b>[ServiceProvider]</b></color> <color=#cc9b05ff>{message}</color>");
-#endif
+      ILoggerService? logger = ServiceResolver.GetService(typeof(ILoggerService), -1, ServiceTargetData.FoundationServiceTargetData(), optional: true) as ILoggerService;
+
+      foreach (var problem in problems)
+      {
+        switch (problem.ProblemDetailType)
+        {
+          case ProblemDetailType.INFORMATION:
+            if (logger != null) logger.Log(problem.Message);
+            else Debug.Log(problem.Message);
+            break;
+          case ProblemDetailType.WARNING:
+            if (logger != null) logger.LogWarning(problem.Message);
+            else Debug.LogWarning(problem.Message);
+            break;
+          case ProblemDetailType.ERROR:
+            if (logger != null) logger.LogError(problem.Message);
+            else Debug.LogError(problem.Message);
+            break;
+        }
+      }
     }
   }
 }

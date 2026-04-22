@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 
 namespace FTFoundation.Core
@@ -6,8 +7,8 @@ namespace FTFoundation.Core
     {
         public string Name { get; }
         public ServiceTargetDataType DataType { get; }
-        public Type ObjectType { get; }
-        public object Reference { get; }
+        public Type? ObjectType { get; }
+        public object? Reference { get; }
     }
 
     public enum ServiceTargetDataType
@@ -16,6 +17,7 @@ namespace FTFoundation.Core
         MONOBEHAVIOUR = 1,
         SYSTEM = 2,
         SINGLETON = 3,
-        SCOPED = 4
+        SCOPED = 4,
+        FT_FOUNDATION = 5
     }
 }

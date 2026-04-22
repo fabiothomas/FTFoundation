@@ -30,6 +30,10 @@ namespace FTFoundation.BuildInServices
           SetPrefix(targetData.Name, "#00708cff", "Sc");
           break;
 
+        case ServiceTargetDataType.FT_FOUNDATION:
+          SetPrefix(targetData.Name, "#00ff00ff", "FT");
+          break;
+
         default:
           SetPrefix(targetData.Name, "#edededff", "??");
           break;

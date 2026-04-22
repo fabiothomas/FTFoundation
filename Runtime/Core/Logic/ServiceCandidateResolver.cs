@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using FTFoundation.Core.Validation;
 
 namespace FTFoundation.Core
 {
@@ -20,8 +21,8 @@ namespace FTFoundation.Core
             // Winning concrete types decorated with [InstantiateOnStartup] that should be eagerly created
             public List<Type> EagerStartups;
 
-            // Warnings to be emitted by the caller after resolution
-            public List<string> Warnings;
+            // Problems to be emitted by the caller after resolution
+            public List<ProblemDetail> Warnings;
         }
 
         private struct ServiceCandidate
@@ -39,7 +40,7 @@ namespace FTFoundation.Core
             var winners = new Dictionary<Type, Type>();
             var allMatched = new Dictionary<Type, List<Type>>();
             var eagerStartups = new List<Type>();
-            var warnings = new List<string>();
+            var warnings = new List<ProblemDetail>();
 
             // ── First pass: collect every [Service]-decorated type grouped by interface ──────────────
             var allCandidates = new Dictionary<Type, List<ServiceCandidate>>();
@@ -93,7 +94,7 @@ namespace FTFoundation.Core
                     if (tied.Count > 1)
                     {
                         var names = string.Join(", ", tied.Select(c => c.ImplementationType.Name));
-                        warnings.Add($"Multiple services for '{iface.Name}' share priority {topPriority} in profile '{currentProfile}': [{names}]. Using '{profileMatched[0].ImplementationType.Name}' for single injection.");
+                        warnings.Add(new ProblemDetail(ProblemDetailType.WARNING, $"Multiple services for '{iface.Name}' share priority {topPriority} in profile '{currentProfile}': [{names}]. Using '{profileMatched[0].ImplementationType.Name}' for single injection."));
                     }
                 }
 
@@ -113,7 +114,7 @@ namespace FTFoundation.Core
                 if (winner.ImplementationType.GetCustomAttributes(typeof(InstantiateOnStartupAttribute), inherit: true).Any())
                 {
                     if (winner.ServiceAttribute.Type == ServiceType.SINGLETON) eagerStartups.Add(winner.ImplementationType);
-                    else warnings.Add($"InstantiateOnStartupAttribute is not valid on {winner.ImplementationType.Name} because it is not a singleton service");
+                    else warnings.Add(new ProblemDetail(ProblemDetailType.WARNING, $"InstantiateOnStartupAttribute is not valid on {winner.ImplementationType.Name} because it is not a singleton service"));
                 }
             }
 
