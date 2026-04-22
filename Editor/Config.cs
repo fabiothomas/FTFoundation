@@ -79,6 +79,9 @@ namespace FTFoundation.Editor
         private GUIStyle _rowEven = null!;
         private GUIStyle _rowOdd = null!;
         private GUIStyle _tagLabelStyle = null!;
+        private GUIStyle _tooltipStyle = null!;
+        private Color _headerColor;
+        private string _hoveredTooltip = "";
 
         private static readonly Color s_winnerColor = new(0.28f, 0.75f, 0.28f);
         private static readonly Color s_activeColor = new(0.85f, 0.75f, 0.20f);
@@ -96,7 +99,7 @@ namespace FTFoundation.Editor
 
         // ── Lifecycle ─────────────────────────────────────────────────────────────────────────
 
-        private void OnEnable() => Refresh();
+        private void OnEnable() { _headerStyle = null!; Refresh(); }
 
         private void OnFocus() => Refresh();
 
@@ -153,8 +156,15 @@ namespace FTFoundation.Editor
             _headerStyle = new GUIStyle(EditorStyles.boldLabel)
             {
                 fontSize = 12,
-                padding = new RectOffset(4, 4, 4, 4)
+                padding = new RectOffset(4, 4, 3, 0),
+                fixedHeight = 0,
+                overflow = new RectOffset(0, 0, 0, 3)
             };
+            _headerColor = EditorGUIUtility.isProSkin
+                ? new Color(0.55f, 0.85f, 1.0f)
+                : new Color(0.10f, 0.35f, 0.75f);
+            _headerStyle.normal.textColor = _headerColor;
+            _headerStyle.onNormal.textColor = _headerColor;
 
             // Column header row — noticeably darker than data rows
             Color colHeaderBg = EditorGUIUtility.isProSkin
@@ -169,7 +179,7 @@ namespace FTFoundation.Editor
             Color evenBg = EditorGUIUtility.isProSkin
                 ? new Color(0.23f, 0.23f, 0.23f) : new Color(0.88f, 0.88f, 0.88f);
             Color oddBg = EditorGUIUtility.isProSkin
-                ? new Color(0.16f, 0.16f, 0.16f) : new Color(0.76f, 0.76f, 0.76f);
+                ? new Color(0.23f, 0.23f, 0.23f) : new Color(0.88f, 0.88f, 0.88f);
 
             _rowEven = new GUIStyle { normal = { background = MakeTex(evenBg) }, padding = new RectOffset(4, 4, 4, 4) };
             _rowOdd = new GUIStyle { normal = { background = MakeTex(oddBg) }, padding = new RectOffset(4, 4, 4, 4) };
@@ -180,24 +190,38 @@ namespace FTFoundation.Editor
                 fontStyle = FontStyle.Bold,
                 padding = new RectOffset(5, 5, 1, 1)
             };
+
+            Color tooltipBg = EditorGUIUtility.isProSkin
+                ? new Color(0.13f, 0.13f, 0.13f, 1f)
+                : new Color(0.92f, 0.92f, 0.92f, 1f);
+            _tooltipStyle = new GUIStyle(EditorStyles.label)
+            {
+                normal = { background = MakeTex(tooltipBg) },
+                padding = new RectOffset(6, 6, 4, 4),
+                border = new RectOffset(1, 1, 1, 1)
+            };
         }
 
         private void OnGUI()
         {
             EnsureStyles();
+            if (Event.current.type == EventType.Layout)
+                _hoveredTooltip = "";
 
             // ── Toolbar ───────────────────────────────────────────────────────────────────────
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
             GUILayout.Label("Service Registry", EditorStyles.boldLabel, GUILayout.Width(120));
-            GUILayout.Space(6);
-            GUILayout.Label("Environment:", EditorStyles.toolbarButton, GUILayout.Width(85));
+            GUILayout.FlexibleSpace();
+            // GUILayout.Label("Environment:", EditorStyles.toolbarButton, GUILayout.Width(85));
             int newProfile = EditorGUILayout.Popup(_profileIndex, s_profileOptions, EditorStyles.toolbarPopup, GUILayout.Width(130));
             if (newProfile != _profileIndex) _profileIndex = newProfile;
             GUILayout.Space(10);
-            GUILayout.Label("Platform:", EditorStyles.toolbarButton, GUILayout.Width(62));
-            int newPlatform = EditorGUILayout.Popup(_platformIndex, s_platformOptions, EditorStyles.toolbarPopup, GUILayout.Width(120));
+            // GUILayout.Label("Platform:", EditorStyles.toolbarButton, GUILayout.Width(62));
+            int newPlatform = EditorGUILayout.Popup(_platformIndex, s_platformOptions, EditorStyles.toolbarPopup, GUILayout.Width(130));
             if (newPlatform != _platformIndex) _platformIndex = newPlatform;
-            GUILayout.FlexibleSpace();
+            GUILayout.Space(10);
+            if (GUILayout.Button("Expand All", EditorStyles.toolbarButton, GUILayout.Width(70))) _groups.ForEach(g => g.Foldout = true);
+            if (GUILayout.Button("Collapse All", EditorStyles.toolbarButton, GUILayout.Width(80))) _groups.ForEach(g => g.Foldout = false);
             if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(60))) Refresh();
             EditorGUILayout.EndHorizontal();
 
@@ -217,6 +241,16 @@ namespace FTFoundation.Editor
 
             EditorGUILayout.Space(2);
 
+            // ── Column headers (pinned above scroll) ──────────────────────────────────────────
+            EditorGUILayout.BeginHorizontal(_colHeaderRowStyle);
+            GUILayout.Label("Implementation", EditorStyles.miniBoldLabel, GUILayout.Width(180));
+            GUILayout.Label("Lifetime", EditorStyles.miniBoldLabel, GUILayout.Width(80));
+            GUILayout.Label("Priority", EditorStyles.miniBoldLabel, GUILayout.Width(55));
+            GUILayout.Label("Profiles", EditorStyles.miniBoldLabel, GUILayout.Width(70));
+            GUILayout.Label("Platforms", EditorStyles.miniBoldLabel, GUILayout.Width(80));
+            GUILayout.Label("Status", EditorStyles.miniBoldLabel);
+            EditorGUILayout.EndHorizontal();
+
             // ── Service groups ────────────────────────────────────────────────────────────────
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
 
@@ -227,6 +261,15 @@ namespace FTFoundation.Editor
             }
 
             EditorGUILayout.EndScrollView();
+
+            // ── Hover tooltip ─────────────────────────────────────────────────────────────────
+            if (!string.IsNullOrEmpty(_hoveredTooltip) && Event.current.type == EventType.Repaint)
+            {
+                var content = new GUIContent(_hoveredTooltip);
+                var size = _tooltipStyle.CalcSize(content);
+                var mp = Event.current.mousePosition;
+                GUI.Box(new Rect(mp.x + 12, mp.y + 12, size.x, size.y), _hoveredTooltip, _tooltipStyle);
+            }
         }
 
         private void DrawGroup(InterfaceGroup group)
@@ -242,20 +285,11 @@ namespace FTFoundation.Editor
                 ? $"{activeCount} / {group.Entries.Count}"
                 : group.Entries.Count.ToString();
 
+            var prevContentColor = GUI.contentColor;
+            GUI.contentColor = _headerColor;
             group.Foldout = EditorGUILayout.Foldout(group.Foldout, $"{group.Interface.Name}  ({count})", true, _headerStyle);
+            GUI.contentColor = prevContentColor;
             if (!group.Foldout) return;
-
-            EditorGUI.indentLevel++;
-
-            // Column headers
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Implementation", EditorStyles.miniBoldLabel, GUILayout.Width(180));
-            GUILayout.Label("Lifetime", EditorStyles.miniBoldLabel, GUILayout.Width(80));
-            GUILayout.Label("Priority", EditorStyles.miniBoldLabel, GUILayout.Width(55));
-            GUILayout.Label("Profiles", EditorStyles.miniBoldLabel, GUILayout.Width(130));
-            GUILayout.Label("Platforms", EditorStyles.miniBoldLabel, GUILayout.Width(120));
-            GUILayout.Label("Status", EditorStyles.miniBoldLabel);
-            EditorGUILayout.EndHorizontal();
 
             // Compute winners considering both filters
             var profilesToCheck = filterProfile.HasValue ? new[] { filterProfile.Value } : s_profiles;
@@ -263,7 +297,7 @@ namespace FTFoundation.Editor
             foreach (var p in profilesToCheck)
             {
                 var w = GetWinner(group.Entries, p, filterPlatform);
-                if (!ReferenceEquals(w, null)) winners.Add(w);
+                if (w is not null) winners.Add(w);
             }
 
             // Rows
@@ -291,32 +325,43 @@ namespace FTFoundation.Editor
                 GUILayout.Label(e.Implementation.Name, GUILayout.Width(180));
                 GUILayout.Label(e.Lifetime.ToString(), GUILayout.Width(80));
                 GUILayout.Label(e.IsFallback ? "—" : e.Priority.ToString(), GUILayout.Width(55));
-                DrawProfileTags(e.Profiles);
-                DrawPlatformLabel(e.Platforms);
+                DrawProfileCell(e.Profiles);
+                DrawPlatformCell(e.Platforms);
                 DrawStatus(e, winners, filterProfile, filterPlatform);
 
                 EditorGUILayout.EndHorizontal();
             }
-
-            EditorGUI.indentLevel--;
         }
 
-        private void DrawPlatformLabel(BuildTargetPlatform platforms)
+        private void DrawPlatformCell(BuildTargetPlatform platforms)
         {
             string text;
+            string tooltip = "";
+
             if (platforms == BuildTargetPlatform.All)
             {
-                text = "ALL";
+                text = "All";
             }
             else
             {
-                var parts = new System.Collections.Generic.List<string>();
-                foreach (BuildTargetPlatform p in s_platformDisplayOrder)
-                    if ((platforms & p) != 0)
-                        parts.Add(PlatformShortName(p));
-                text = string.Join(" ", parts);
+                var set = s_platformDisplayOrder.Where(p => (platforms & p) != 0).ToList();
+                if (set.Count == 1)
+                {
+                    text = set[0].ToString();
+                }
+                else
+                {
+                    text = "Multiple";
+                    tooltip = string.Join(", ", set.Select(p => p.ToString()));
+                }
             }
-            GUILayout.Label(text, GUILayout.Width(120));
+
+            GUILayout.Label(text, GUILayout.Width(80));
+            if (!string.IsNullOrEmpty(tooltip) && Event.current.type == EventType.Repaint)
+            {
+                if (GUILayoutUtility.GetLastRect().Contains(Event.current.mousePosition))
+                    _hoveredTooltip = tooltip;
+            }
         }
 
         private static readonly BuildTargetPlatform[] s_platformDisplayOrder =
@@ -352,20 +397,35 @@ namespace FTFoundation.Editor
             _ => p.ToString()
         };
 
-        private void DrawProfileTags(BuildTargetProfile profiles)
+        private void DrawProfileCell(BuildTargetProfile profiles)
         {
-            EditorGUILayout.BeginHorizontal(GUILayout.Width(130));
+            string text;
+            string tooltip = "";
+
             if (profiles == BuildTargetProfile.All)
             {
-                DrawTag("ALL", s_activeColor);
+                text = "All";
             }
             else
             {
-                foreach (var p in s_profiles)
-                    if (profiles.HasFlag(p))
-                        DrawTag(ProfileShortName(p), s_activeColor);
+                var set = s_profiles.Where(p => profiles.HasFlag(p)).ToList();
+                if (set.Count == 1)
+                {
+                    text = set[0].ToString();
+                }
+                else
+                {
+                    text = "Multiple";
+                    tooltip = string.Join(", ", set.Select(p => p.ToString()));
+                }
             }
-            EditorGUILayout.EndHorizontal();
+
+            GUILayout.Label(text, GUILayout.Width(70));
+            if (!string.IsNullOrEmpty(tooltip) && Event.current.type == EventType.Repaint)
+            {
+                if (GUILayoutUtility.GetLastRect().Contains(Event.current.mousePosition))
+                    _hoveredTooltip = tooltip;
+            }
         }
 
         private void DrawStatus(ServiceEntry e, HashSet<Type> winners, BuildTargetProfile? filterProfile, BuildTargetPlatform? filterPlatform)
@@ -457,15 +517,6 @@ namespace FTFoundation.Editor
             return fallbacks.Count > 0 ? fallbacks[0].Implementation : null;
 #pragma warning restore CS8603
         }
-
-        private static string ProfileShortName(BuildTargetProfile p) => p switch
-        {
-            BuildTargetProfile.Editor => "Ed",
-            BuildTargetProfile.Development => "Dev",
-            BuildTargetProfile.Staging => "Stg",
-            BuildTargetProfile.Production => "Pro",
-            _ => p.ToString()
-        };
 
         private static Texture2D MakeTex(Color color)
         {

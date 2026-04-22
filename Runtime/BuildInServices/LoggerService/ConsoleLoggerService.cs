@@ -6,6 +6,7 @@ namespace FTFoundation.BuildInServices
 {
 
   [ServiceBuildProfile(BuildTargetProfile.Editor)]
+  [ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
   [ServicePriority(10)]
   [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
   public class ConsoleLoggerService : ILoggerService
