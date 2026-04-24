@@ -9,7 +9,7 @@ namespace FTFoundation.BuildInServices
   [Service(typeof(IEventService), ServiceType.SINGLETON)]
   public class EventService : IEventService
   {
-    ILoggerService _loggerService;
+    ILoggerService _loggerService = null!;
 
     void Inject(ILoggerService loggerService)
     {

@@ -9,6 +9,7 @@ namespace FTFoundation.BuildInServices
     [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
     public class ScreenLoggerService : ILoggerService
     {
+        [Inject] private IDebugScreen DebugScreen { get; set; } = null!;
         public bool Disabled { get; set; }
 
         public void Log(string message)
