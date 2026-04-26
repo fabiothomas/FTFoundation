@@ -146,26 +146,29 @@ namespace FTFoundation.Core
       }
     }
 
-    private static void FlushProblems(List<ProblemDetail> problems)
+    internal static void FlushProblems(List<ProblemDetail> problems)
     {
-      ILoggerService? logger = ServiceResolver.GetService(typeof(ILoggerService), -1, ServiceTargetData.FoundationServiceTargetData(), optional: true) as ILoggerService;
+      IReadOnlyList<ILoggerService>? loggers = ServiceResolver.GetService(typeof(IReadOnlyList<ILoggerService>), -1, ServiceTargetData.FoundationServiceTargetData(), optional: true) as IReadOnlyList<ILoggerService>;
 
       foreach (var problem in problems)
       {
-        switch (problem.ProblemDetailType)
+        foreach (var logger in loggers ?? Array.Empty<ILoggerService>())
         {
-          case ProblemDetailType.INFORMATION:
-            if (logger != null) logger.Log(problem.Message);
-            else Debug.Log(problem.Message);
-            break;
-          case ProblemDetailType.WARNING:
-            if (logger != null) logger.LogWarning(problem.Message);
-            else Debug.LogWarning(problem.Message);
-            break;
-          case ProblemDetailType.ERROR:
-            if (logger != null) logger.LogError(problem.Message);
-            else Debug.LogError(problem.Message);
-            break;
+          switch (problem.ProblemDetailType)
+          {
+            case ProblemDetailType.INFORMATION:
+              if (logger != null) logger.Log(problem.Message);
+              else Debug.Log(problem.Message);
+              break;
+            case ProblemDetailType.WARNING:
+              if (logger != null) logger.LogWarning(problem.Message);
+              else Debug.LogWarning(problem.Message);
+              break;
+            case ProblemDetailType.ERROR:
+              if (logger != null) logger.LogError(problem.Message);
+              else Debug.LogError(problem.Message);
+              break;
+          }
         }
       }
     }

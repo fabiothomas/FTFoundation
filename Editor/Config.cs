@@ -151,7 +151,7 @@ namespace FTFoundation.Editor
 
         private void EnsureStyles()
         {
-            if (_headerStyle != null) return;
+            if (_headerStyle != null && _colHeaderRowStyle?.normal.background != null) return;
 
             _headerStyle = new GUIStyle(EditorStyles.boldLabel)
             {
@@ -523,6 +523,7 @@ namespace FTFoundation.Editor
             var tex = new Texture2D(1, 1);
             tex.SetPixel(0, 0, color);
             tex.Apply();
+            tex.hideFlags = HideFlags.DontSave;
             return tex;
         }
     }

@@ -21,10 +21,7 @@ namespace FTFoundation.Core.Validation
 
             ValidateCircularDependencies(serviceCache, multiServiceCache, problems);
 
-            var lines = serviceCache
-                .OrderBy(kvp => kvp.Key.Name)
-                .Select(kvp => $"  {kvp.Key.Name} → {kvp.Value.Name}");
-            problems.Add(new ProblemDetail(ProblemDetailType.INFORMATION, $"{serviceCache.Count} service(s) active in profile '{currentProfile}':\n{string.Join("\n", lines)}"));
+            problems.Add(new ProblemDetail(ProblemDetailType.INFORMATION, $"{serviceCache.Count} service(s) active in profile '{currentProfile}'"));
         }
 
         private static void ValidateCircularDependencies(

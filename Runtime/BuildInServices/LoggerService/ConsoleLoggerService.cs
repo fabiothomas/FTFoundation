@@ -11,6 +11,10 @@ namespace FTFoundation.BuildInServices
   [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
   public class ConsoleLoggerService : ILoggerService
   {
+    public bool Disabled { get; set; }
+
+    private string prefix = null!;
+
     void Inject(IServiceTargetData targetData)
     {
       switch (targetData.DataType)
@@ -41,14 +45,15 @@ namespace FTFoundation.BuildInServices
       }
     }
 
-    private string prefix = null!;
-
     private void SetPrefix(string name, string color, string icon)
     {
       prefix = $"<color={color}>[{icon}]<b>[{name}]</b></color>";
     }
 
-    public bool Disabled { get; set; }
+    private string FormatMessage(string message, string color)
+    {
+      return $"{prefix} <color={color}>{message}</color>";
+    }
 
     [HideInCallstack]
     public void Log(string message)
@@ -72,11 +77,6 @@ namespace FTFoundation.BuildInServices
       if (Disabled) return;
 
       Debug.LogError(FormatMessage(message, "#cc5833ff"));
-    }
-
-    private string FormatMessage(string message, string color)
-    {
-      return $"{prefix} <color={color}>{message}</color>";
     }
   }
 }
