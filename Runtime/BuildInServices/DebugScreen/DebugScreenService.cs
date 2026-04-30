@@ -50,8 +50,8 @@ namespace FTFoundation.BuildInServices
 
             DedicatedObjectService.ConstructCanvas();
             GameObject panel = DedicatedObjectService.ConstructPanel(UIPosition.Get(
-                new UIStretch { anchorMin = 0.02f, anchorMax = 0.22f, offsetMin = 0, offsetMax = 0 },
-                new UIStretch { anchorMin = 0.05f, anchorMax = 0.95f, offsetMin = 0, offsetMax = 0 }
+                new UIAnchored { anchor = 0, offset = 160f, size = 300 },
+                new UIStretch { anchorMin = 0, anchorMax = 1, offsetMin = 10f, offsetMax = -10f }
             ), new Color(0, 0, 0, 0.5f));
 
             DedicatedObjectService.ConstructPanel(UIPosition.Get(
@@ -219,12 +219,13 @@ namespace FTFoundation.BuildInServices
             UnityEngine.Object.Destroy(button);
         }
 
-        public void AddValueWatcher<T>(string label, Func<T> valueProvider, Color? color = null)
+        public IDisposable AddValueWatcher<T>(string label, Func<T> valueProvider, Color? color = null)
         {
+            return new DelegateDisposable(() => RemoveValueWatcher(label));
             // Implementation here
         }
 
-        public void RemoveValueWatcher(string label)
+        private void RemoveValueWatcher(string label)
         {
             // Implementation here
         }

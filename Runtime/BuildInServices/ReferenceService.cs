@@ -9,7 +9,7 @@ namespace FTFoundation.BuildInServices
     [Service(typeof(IReferenceService), ServiceType.SINGLETON)]
     public class ReferenceService : IReferenceService
     {
-        ILoggerService _ls;
+        ILoggerService _ls = null!;
         void Inject(ILoggerService ls)
         {
             _ls = ls;

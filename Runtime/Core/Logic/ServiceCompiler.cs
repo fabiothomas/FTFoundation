@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -46,18 +47,21 @@ namespace FTFoundation.Core
         {
             if (injectionActions.ContainsKey(injectionObjectType)) return;
 
+            var configProperties = injectionObjectType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic)
+              .Where(p => Attribute.IsDefined(p, typeof(ConfigAttribute)))
+              .ToList();
             var injectableProperties = injectionObjectType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic)
               .Where(p => Attribute.IsDefined(p, typeof(InjectAttribute)))
               .ToList();
             var injectMethod = injectionObjectType.GetMethod("Inject", BindingFlags.Instance | BindingFlags.NonPublic);
 
-            if (injectableProperties.Count != 0 || injectMethod != null)
+            if (configProperties.Count != 0 || injectableProperties.Count != 0 || injectMethod != null)
             {
-                injectionActions[injectionObjectType] = CreateInjectionAction(injectionObjectType, injectableProperties, injectMethod);
+                injectionActions[injectionObjectType] = CreateInjectionAction(injectionObjectType, configProperties, injectableProperties, injectMethod);
             }
         }
 
-        private static Action<object, int, ServiceTargetData> CreateInjectionAction(Type injectionObjectType, List<PropertyInfo> injectableProperties, MethodInfo injectMethod)
+        private static Action<object, int, ServiceTargetData> CreateInjectionAction(Type injectionObjectType, List<PropertyInfo> configProperties, List<PropertyInfo> injectableProperties, MethodInfo? injectMethod)
         {
             var objParameter = Expression.Parameter(typeof(object), "obj");
             var sceneIndexParameter = Expression.Parameter(typeof(int), "sceneIndex");
@@ -66,6 +70,24 @@ namespace FTFoundation.Core
             var typedObj = Expression.Convert(objParameter, injectionObjectType);
 
             var expressions = new List<Expression>();
+
+            // Config properties are applied first so values are available inside void Inject(...)
+            foreach (var property in configProperties)
+            {
+                bool isRequired = property.GetCustomAttribute<ConfigAttribute>()!.Required;
+                var call = Expression.Call(
+                    typeof(ConfigLoader),
+                    nameof(ConfigLoader.ApplyConfigValue),
+                    null,
+                    new Expression[]
+                    {
+                        objParameter,
+                        Expression.Constant(property, typeof(System.Reflection.PropertyInfo)),
+                        Expression.Constant(injectionObjectType, typeof(Type)),
+                        Expression.Constant(isRequired)
+                    });
+                expressions.Add(call);
+            }
 
             foreach (var property in injectableProperties)
             {

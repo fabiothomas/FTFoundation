@@ -10,7 +10,6 @@ namespace FTFoundation.BuildInReferences
         public void Print(string message);
         public void Clear();
         public IDisposable AddButton(string label, Action onClick, Color? color = null, Key? hotkey = null);
-        public void AddValueWatcher<T>(string label, Func<T> valueProvider, Color? color = null);
-        public void RemoveValueWatcher(string label);
+        public IDisposable AddValueWatcher<T>(string label, Func<T> valueProvider, Color? color = null);
     }
 }

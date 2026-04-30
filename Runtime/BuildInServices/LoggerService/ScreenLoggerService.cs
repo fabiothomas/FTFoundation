@@ -12,6 +12,16 @@ namespace FTFoundation.BuildInServices
         [Inject] private IDebugScreenService DebugScreen { get; set; } = null!;
         public bool Disabled { get; set; }
 
+        [Config] private string MonoColor { get; set; } = null!;
+        [Config] private string SystemColor { get; set; } = null!;
+        [Config] private string SingletonColor { get; set; } = null!;
+        [Config] private string ScopedColor { get; set; } = null!;
+        [Config] private string FoundationColor { get; set; } = null!;
+        [Config] private string DefaultColor { get; set; } = null!;
+        [Config] private string LogColor { get; set; } = null!;
+        [Config] private string WarningColor { get; set; } = null!;
+        [Config] private string ErrorColor { get; set; } = null!;
+
         private string prefix = null!;
 
         void Inject(IServiceTargetData targetData)
@@ -19,27 +29,27 @@ namespace FTFoundation.BuildInServices
             switch (targetData.DataType)
             {
                 case ServiceTargetDataType.MONOBEHAVIOUR:
-                    SetPrefix(targetData.Name, "#ff7fb9ff", "Mo");
+                    SetPrefix(targetData.Name, MonoColor, "Mo");
                     break;
 
                 case ServiceTargetDataType.SYSTEM:
-                    SetPrefix(targetData.Name, "#eba5ffff", "Sy");
+                    SetPrefix(targetData.Name, SystemColor, "Sy");
                     break;
 
                 case ServiceTargetDataType.SINGLETON:
-                    SetPrefix(targetData.Name, "#04c3c9ff", "Si");
+                    SetPrefix(targetData.Name, SingletonColor, "Si");
                     break;
 
                 case ServiceTargetDataType.SCOPED:
-                    SetPrefix(targetData.Name, "#00708cff", "Sc");
+                    SetPrefix(targetData.Name, ScopedColor, "Sc");
                     break;
 
                 case ServiceTargetDataType.FT_FOUNDATION:
-                    SetPrefix(targetData.Name, "#00ff00ff", "FT");
+                    SetPrefix(targetData.Name, FoundationColor, "FT");
                     break;
 
                 default:
-                    SetPrefix(targetData.Name, "#edededff", "??");
+                    SetPrefix(targetData.Name, DefaultColor, "??");
                     break;
             }
         }
@@ -58,21 +68,21 @@ namespace FTFoundation.BuildInServices
         {
             if (Disabled) return;
 
-            DebugScreen.Print(FormatMessage(message, "#edededff"));
+            DebugScreen.Print(FormatMessage(message, LogColor));
         }
 
         public void LogWarning(string message)
         {
             if (Disabled) return;
 
-            DebugScreen.Print(FormatMessage(message, "#cc9b05ff"));
+            DebugScreen.Print(FormatMessage(message, WarningColor));
         }
 
         public void LogError(string message)
         {
             if (Disabled) return;
 
-            DebugScreen.Print(FormatMessage(message, "#cc5833ff"));
+            DebugScreen.Print(FormatMessage(message, ErrorColor));
         }
     }
 }

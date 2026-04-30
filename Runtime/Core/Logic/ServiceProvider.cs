@@ -5,6 +5,7 @@ using System.Reflection;
 using FTFoundation.BuildInReferences;
 using FTFoundation.Core.Validation;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace FTFoundation.Core
 {
@@ -24,11 +25,16 @@ namespace FTFoundation.Core
       multiServiceCache.Clear();
       ServiceResolver.Clear();
       ServiceCompiler.Clear();
+      ConfigLoader.Clear();
+      SceneManager.sceneUnloaded -= OnSceneUnloaded;
+      SceneManager.sceneUnloaded += OnSceneUnloaded;
 
       var problems = new List<ProblemDetail>();
 
       BuildTargetProfile currentProfile = BuildProfileDetector.Current;
       BuildTargetPlatform currentPlatform = BuildPlatformDetector.Current;
+
+      ConfigLoader.Initialize(currentProfile);
 
       // ── Resolve service candidates ────────────────────────────────────────────────────────
       var resolved = ServiceCandidateResolver.Resolve(currentProfile, currentPlatform);
@@ -118,6 +124,18 @@ namespace FTFoundation.Core
 
       ServiceStackValidator.Validate(serviceCache, multiServiceCache, currentProfile, problems);
 
+      // ── Validate required config values ──────────────────────────────────────────────────
+      foreach (var serviceType in serviceCache.Values)
+      {
+        foreach (var prop in serviceType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic))
+        {
+          var configAttr = prop.GetCustomAttribute<ConfigAttribute>();
+          if (configAttr?.Required == true && !ConfigLoader.TryGetValue(serviceType, prop.Name, out _))
+            problems.Add(new ProblemDetail(ProblemDetailType.ERROR,
+              $"Service '{serviceType.Name}' requires config value '{ConfigLoader.GetServiceKey(serviceType)}.{ConfigLoader.LowercaseFirst(prop.Name)}' which is not defined in any appsettings file."));
+        }
+      }
+
       // ── Flush collected diagnostics via ILoggerService ───────────────────────────────────
       if (problems.Count > 0)
         FlushProblems(problems);
@@ -131,7 +149,22 @@ namespace FTFoundation.Core
     public static void Inject(MonoBehaviour instance)
     {
       ServiceTargetData target = new(instance.name, ServiceTargetDataType.MONOBEHAVIOUR, instance.GetType(), instance);
+
+      ServiceResolver.CurrentTransientContext = new System.Collections.Generic.List<object>();
       InjectDependencies(instance, instance.gameObject.scene.buildIndex, target);
+      var transients = ServiceResolver.CurrentTransientContext;
+      ServiceResolver.CurrentTransientContext = null;
+
+      if (transients.Count > 0)
+      {
+        if (!instance.gameObject.TryGetComponent<ServiceCleanupTracker>(out var tracker)) tracker = instance.gameObject.AddComponent<ServiceCleanupTracker>();
+        tracker.AddServices(transients);
+      }
+    }
+
+    private static void OnSceneUnloaded(Scene scene)
+    {
+      ServiceResolver.CleanupScoped(scene.buildIndex);
     }
 
     internal static void InjectDependencies(object obj, int sceneIndex, ServiceTargetData target)

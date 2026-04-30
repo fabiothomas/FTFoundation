@@ -5,7 +5,7 @@ namespace FTFoundation.BuildInServices
 {
 
     [ServiceFallback]
-    [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
+    [Service(typeof(ILoggerService), ServiceType.SINGLETON)]
     public class NullLoggerService : ILoggerService
     {
         public bool Disabled { get; set; }

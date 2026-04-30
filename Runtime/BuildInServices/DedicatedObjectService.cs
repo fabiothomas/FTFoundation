@@ -8,13 +8,18 @@ using UnityEngine.UI;
 namespace FTFoundation.BuildInServices
 {
     [Service(typeof(IDedicatedObjectService), ServiceType.TRANSIENT)]
-    public class DedicatedObjectService : IDedicatedObjectService
+    public class DedicatedObjectService : IDedicatedObjectService, IServiceCleanup
     {
         private GameObject This { get; set; } = null!;
         void Inject(IServiceTargetData targetData)
         {
             This = new GameObject($"{targetData.Name}");
             Object.DontDestroyOnLoad(This);
+        }
+
+        public void OnCleanup()
+        {
+            if (This != null) Object.Destroy(This);
         }
 
         public GameObject Get()
