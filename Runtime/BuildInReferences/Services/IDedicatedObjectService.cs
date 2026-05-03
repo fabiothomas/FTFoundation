@@ -1,6 +1,6 @@
 #nullable enable
-using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace FTFoundation.BuildInReferences
 {
@@ -12,20 +12,16 @@ namespace FTFoundation.BuildInReferences
     public interface IDedicatedObjectService
     {
         /// <returns>The dedicated game object for this service.</returns>
-        public GameObject Get();
+        public GameObject This { get; }
 
-        public void ConstructCanvas();
+        public void MakeCanvas(out Canvas canvas, out CanvasScaler scaler);
 
-        public GameObject ConstructEmptyChild(string name, GameObject? parent = null);
+        public GameObject ConstructEmpty(Position pos, string name, GameObject? parent = null);
 
-        public GameObject ConstructEmptyCanvasChild(UIPosition pos, string name, GameObject? parent = null);
+        public GameObject ConstructObject<T>(Position pos, string name, out T compontent, GameObject? parent = null) where T : Component;
 
-        public GameObject ConstructPanel(UIPosition pos, Color color, GameObject? parent = null);
+        public GameObject ConstructCanvasEmpty(UIPosition pos, string name, GameObject? parent = null);
 
-        public GameObject ConstructScrollView(UIPosition pos, Color? color, GameObject? parent = null);
-
-        public GameObject ConstructText(UIPosition pos, string text, Color color, int fontSize, TextAlignmentOptions alignment, GameObject? parent = null);
-
-        public GameObject ConstructButton(UIPosition pos, string label, Color color, GameObject? parent = null);
+        public GameObject ConstructCanvasObject<T>(UIPosition pos, string name, out T compontent, GameObject? parent = null) where T : Component;
     }
 }

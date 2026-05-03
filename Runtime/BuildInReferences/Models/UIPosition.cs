@@ -51,7 +51,7 @@ namespace FTFoundation.BuildInReferences
             verticalStretch = verticalStretch,
         };
 
-        public void SetTransform(RectTransform transform)
+        public readonly void SetTransform(RectTransform transform)
         {
             if (horizontalStretch.HasValue && verticalStretch.HasValue)
             {

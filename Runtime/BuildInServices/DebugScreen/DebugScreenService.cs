@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using FTFoundation.BuildInReferences;
@@ -44,99 +45,166 @@ namespace FTFoundation.BuildInServices
             lifetimeService.OnUpdate(Update);
         }
 
+        #region Construction
         private void ConstructObject()
         {
-            DebugScreenObject = DedicatedObjectService.Get();
+            DebugScreenObject = DedicatedObjectService.This;
 
-            DedicatedObjectService.ConstructCanvas();
-            GameObject panel = DedicatedObjectService.ConstructPanel(UIPosition.Get(
+            // Define object as canvas
+            DedicatedObjectService.MakeCanvas(out Canvas canvas, out CanvasScaler scaler);
+
+            // Background
+            GameObject panel = DedicatedObjectService.ConstructCanvasObject<Image>(UIPosition.Get(
                 new UIAnchored { anchor = 0, offset = 160f, size = 300 },
                 new UIStretch { anchorMin = 0, anchorMax = 1, offsetMin = 10f, offsetMax = -10f }
-            ), new Color(0, 0, 0, 0.5f));
+            ), "Background", out var backgroundImage);
+            backgroundImage.color = new Color(0, 0, 0, 0.5f);
 
-            DedicatedObjectService.ConstructPanel(UIPosition.Get(
+            // Header
+            DedicatedObjectService.ConstructCanvasObject<Image>(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
                 new UIAnchored { anchor = 1f, offset = -15f, size = 30f }
-            ), new Color(0, 0, 0, 0.5f), panel);
+            ), "Header", out var headerImage, panel);
+            headerImage.color = new Color(0, 0, 0, 0.5f);
 
-            DedicatedObjectService.ConstructButton(UIPosition.Get(
+            // Close Button
+            ConstructButton(UIPosition.Get(
                 new UIAnchored { anchor = 1f, offset = 15f, size = 20f },
                 new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
-            ), "X", Color.gray, panel).GetComponent<Button>().onClick.AddListener(() => Toggle());
+            ), "X", Color.gray, out var closeButton, panel);
+            closeButton.onClick.AddListener(() => Toggle());
 
+            // Tabs
             ConstructTerminal(panel);
             ConstructButtonPanel(panel);
             ConstructValueWatcherPanel(panel);
 
-            TerminalButton = DedicatedObjectService.ConstructButton(UIPosition.Get(
+            // Terminal Button
+            ConstructButton(UIPosition.Get(
                 new UIStretch { anchorMin = 0.02f, anchorMax = 0.32f, offsetMin = 0, offsetMax = 0 },
                 new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
-            ), "Terminal", Color.gray, panel).GetComponent<Button>();
+            ), "Terminal", Color.gray, out var terminalButton, panel);
+            TerminalButton = terminalButton;
             TerminalButton.onClick.AddListener(() => SelectTab("Terminal"));
 
-            ButtonPanelButton = DedicatedObjectService.ConstructButton(UIPosition.Get(
+            // Button Panel Button
+            ConstructButton(UIPosition.Get(
                 new UIStretch { anchorMin = 0.34f, anchorMax = 0.65f, offsetMin = 0, offsetMax = 0 },
                 new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
-            ), "Buttons", Color.gray, panel).GetComponent<Button>();
+            ), "Buttons", Color.gray, out var buttonPanelButton, panel);
+            ButtonPanelButton = buttonPanelButton;
             ButtonPanelButton.onClick.AddListener(() => SelectTab("ButtonPanel"));
 
-            ValueWatcherPanelButton = DedicatedObjectService.ConstructButton(UIPosition.Get(
+            // Value Watcher Panel Button
+            ConstructButton(UIPosition.Get(
                 new UIStretch { anchorMin = 0.67f, anchorMax = 0.98f, offsetMin = 0, offsetMax = 0 },
                 new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
-            ), "Values", Color.gray, panel).GetComponent<Button>();
+            ), "Values", Color.gray, out var valueWatcherPanelButton, panel);
+            ValueWatcherPanelButton = valueWatcherPanelButton;
             ValueWatcherPanelButton.onClick.AddListener(() => SelectTab("ValueWatcherPanel"));
         }
 
         private void ConstructTerminal(GameObject parent)
         {
-            Terminal = DedicatedObjectService.ConstructEmptyCanvasChild(UIPosition.Get(
+            // Terminal
+            Terminal = DedicatedObjectService.ConstructCanvasEmpty(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -30 }
             ), "Terminal", parent);
 
-            GameObject scrollView = DedicatedObjectService.ConstructScrollView(UIPosition.Get(
+            // Terminal ScrollView
+            GameObject scrollView = DedicatedObjectService.ConstructCanvasObject<ScrollRect>(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 },
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 }
-            ), null, Terminal);
+            ), "ScrollView", out var scrollRect, Terminal);
+            TerminalScrollRect = scrollRect;
+            GameObject viewport = DedicatedObjectService.ConstructCanvasObject<Mask>(UIPosition.FullScreen, "Viewport", out var maskComponent, scrollView);
+            maskComponent.showMaskGraphic = false;
+            viewport.AddComponent<Image>().isMaskingGraphic = true;
+            scrollRect.horizontal = false;
+            scrollRect.viewport = viewport.GetComponent<RectTransform>();
 
-            TerminalText = DedicatedObjectService.ConstructText(
-                UIPosition.FullScreen, "", Color.white, 14, TextAlignmentOptions.TopLeft, scrollView
-            ).GetComponent<TextMeshProUGUI>();
-            TerminalScrollRect = scrollView.GetComponentInParent<ScrollRect>();
+            // Terminal Text
+            GameObject textObject = ConstructText(UIPosition.FullScreen, "", Color.white, 14, TextAlignmentOptions.TopLeft, out var textComponent, viewport);
+            TerminalText = textComponent;
+            scrollRect.content = TerminalText.GetComponent<RectTransform>();
+            textComponent.overflowMode = TextOverflowModes.ScrollRect;
+            textObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            DedicatedObjectService.ConstructButton(UIPosition.Get(
+            // Clear Button
+            ConstructButton(UIPosition.Get(
                 new UIAnchored { anchor = 1f, offset = 30f, size = 50f },
                 new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
-            ), "Clear", Color.gray, Terminal).GetComponent<Button>().onClick.AddListener(() => Clear());
+            ), "Clear", Color.gray, out var clearButton, Terminal);
+            clearButton.onClick.AddListener(() => Clear());
         }
 
         private void ConstructButtonPanel(GameObject parent)
         {
-            ButtonPanel = DedicatedObjectService.ConstructEmptyCanvasChild(UIPosition.Get(
+            // Button Panel
+            ButtonPanel = DedicatedObjectService.ConstructCanvasEmpty(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -30 }
             ), "ButtonPanel", parent);
 
-            GameObject scrollView = DedicatedObjectService.ConstructScrollView(UIPosition.Get(
+            // Button Panel ScrollView
+            GameObject scrollView = DedicatedObjectService.ConstructCanvasObject<ScrollRect>(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 },
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 }
-            ), null, ButtonPanel);
+            ), "ScrollView", out var scrollRect, ButtonPanel);
+            GameObject viewport = DedicatedObjectService.ConstructCanvasObject<Mask>(UIPosition.FullScreen, "Viewport", out var maskComponent, scrollView);
+            maskComponent.showMaskGraphic = false;
+            viewport.AddComponent<Image>().isMaskingGraphic = true;
+            scrollRect.horizontal = false;
+            scrollRect.viewport = viewport.GetComponent<RectTransform>();
 
-            ButtonPanelContent = DedicatedObjectService.ConstructEmptyCanvasChild(UIPosition.Get(
+            // Button Panel Content
+            ButtonPanelContent = DedicatedObjectService.ConstructCanvasEmpty(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
                 new UIAnchored { anchor = 1f, offset = 0, size = 0 }
-            ), "Content", scrollView);
+            ), "ButtonPanelContent", viewport);
             ButtonPanelContentRect = ButtonPanelContent.GetComponent<RectTransform>();
         }
 
         private void ConstructValueWatcherPanel(GameObject parent)
         {
-            ValueWatcherPanel = DedicatedObjectService.ConstructEmptyCanvasChild(UIPosition.Get(
+            // Value Watcher Panel
+            ValueWatcherPanel = DedicatedObjectService.ConstructCanvasEmpty(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -30 }
             ), "ValueWatcherPanel", parent);
         }
+        #endregion
 
+        #region Construction Helpers
+        private GameObject ConstructText(UIPosition pos, string text, Color color, int fontSize, TextAlignmentOptions alignment, out TextMeshProUGUI textComponent, GameObject? parent = null)
+        {
+            GameObject textObject = DedicatedObjectService.ConstructCanvasObject(pos, "Text", out textComponent, parent);
+            textComponent.text = text;
+            textComponent.color = color;
+            textComponent.font = TMP_Settings.defaultFontAsset;
+            textComponent.alignment = alignment;
+            if (fontSize > 0) textComponent.fontSize = fontSize;
+
+            return textObject;
+        }
+
+        public GameObject ConstructButton(UIPosition pos, string label, Color color, out Button buttonComponent, GameObject? parent = null)
+        {
+            GameObject buttonObject = DedicatedObjectService.ConstructCanvasObject(pos, label, out buttonComponent, parent);
+            buttonComponent.targetGraphic = buttonObject.AddComponent<Image>();
+            buttonComponent.targetGraphic.color = color;
+
+            ConstructText(UIPosition.FullScreen, label, Color.black, -1, TextAlignmentOptions.Center, out var textComponent, buttonObject);
+            textComponent.enableAutoSizing = true;
+            textComponent.fontSizeMin = 1;
+            textComponent.fontSizeMax = 1000;
+
+            return buttonObject;
+        }
+        #endregion
+
+        #region Runtime
         private void Update()
         {
             if (UpdateRequested)
@@ -161,7 +229,9 @@ namespace FTFoundation.BuildInServices
                 }
             }
         }
+        #endregion
 
+        #region Functionality
         public void Toggle(bool? active = null)
         {
             DebugScreenObject.SetActive(active ?? !DebugScreenObject.activeSelf);
@@ -183,11 +253,11 @@ namespace FTFoundation.BuildInServices
             float offset = ButtonPanelContent.transform.childCount * 25f + 15f;
             ButtonPanelContentRect.sizeDelta = new Vector2(0, offset + 10f);
 
-            GameObject button = DedicatedObjectService.ConstructButton(UIPosition.Get(
+            GameObject button = ConstructButton(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -30 },
                 new UIAnchored { anchor = 1f, offset = -offset, size = 20f }
-            ), label, color ?? Color.gray, ButtonPanelContent);
-            button.GetComponent<Button>().onClick.AddListener(() => onClick());
+            ), label, color ?? Color.gray, out var buttonComponent, ButtonPanelContent);
+            buttonComponent.onClick.AddListener(() => onClick());
 
             if (hotkey != null)
             {
@@ -195,12 +265,12 @@ namespace FTFoundation.BuildInServices
                 {
                     HotkeyButtonMap[hotkey.Value] = new List<Button>();
                 }
-                HotkeyButtonMap[hotkey.Value].Add(button.GetComponent<Button>());
+                HotkeyButtonMap[hotkey.Value].Add(buttonComponent);
 
-                DedicatedObjectService.ConstructText(UIPosition.Get(
+                ConstructText(UIPosition.Get(
                     new UIAnchored { anchor = 1f, offset = 15f, size = 20f },
                     new UIAnchored { anchor = 1f, offset = -10f, size = 20f }
-                ), hotkey.ToString() ?? "", Color.white, 14, TextAlignmentOptions.Center, button);
+                ), hotkey.ToString() ?? "", Color.white, 14, TextAlignmentOptions.Center, out var textComponent, button);
             }
 
             return new DelegateDisposable(() => RemoveButton(button, hotkey));
@@ -240,5 +310,6 @@ namespace FTFoundation.BuildInServices
             ButtonPanel.SetActive(tabName == "ButtonPanel");
             ValueWatcherPanel.SetActive(tabName == "ValueWatcherPanel");
         }
+        #endregion
     }
 }

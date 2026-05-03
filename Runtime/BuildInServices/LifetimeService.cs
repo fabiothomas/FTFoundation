@@ -14,7 +14,7 @@ namespace FTFoundation.BuildInServices
         private readonly List<Action> lateUpdateActions = new();
         void Inject(IDedicatedObjectService dedicatedObjectService)
         {
-            GameObject obj = dedicatedObjectService.Get();
+            GameObject obj = dedicatedObjectService.This;
             LifetimeServiceHelper helper = obj.AddComponent<LifetimeServiceHelper>();
             helper.Initialize(this);
         }
