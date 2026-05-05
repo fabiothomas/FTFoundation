@@ -15,7 +15,7 @@ namespace FTFoundation.BuildInServices
             return new DelegateDisposable(() => { /* No button to remove */ });
         }
 
-        public IDisposable AddValueWatcher<T>(string label, Func<T> valueProvider, Color? color = null)
+        public IDisposable AddValueWatcher(string label, Saveable<string> saveable, Color? color = null)
         {
             return new DelegateDisposable(() => { /* No value watcher to remove */ });
         }
