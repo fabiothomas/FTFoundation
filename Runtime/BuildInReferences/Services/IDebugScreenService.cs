@@ -47,5 +47,11 @@ namespace FTFoundation.BuildInReferences
         /// <param name="color"></param>
         /// <returns></returns>
         public IDisposable AddValueWatcher(string label, Saveable<string> saveable, Color? color = null);
+
+        public IDisposable AddValueWatcher(string label, Saveable<int> saveable, Color? color = null);
+
+        public IDisposable AddValueWatcher(string label, Saveable<float> saveable, Color? color = null);
+
+        public IDisposable AddValueWatcher(string label, Saveable<bool> saveable, Color? color = null);
     }
 }

@@ -20,6 +20,21 @@ namespace FTFoundation.BuildInServices
             return new DelegateDisposable(() => { /* No value watcher to remove */ });
         }
 
+        public IDisposable AddValueWatcher(string label, Saveable<int> saveable, Color? color = null)
+        {
+            return new DelegateDisposable(() => { /* No value watcher to remove */ });
+        }
+
+        public IDisposable AddValueWatcher(string label, Saveable<float> saveable, Color? color = null)
+        {
+            return new DelegateDisposable(() => { /* No value watcher to remove */ });
+        }
+
+        public IDisposable AddValueWatcher(string label, Saveable<bool> saveable, Color? color = null)
+        {
+            return new DelegateDisposable(() => { /* No value watcher to remove */ });
+        }
+
         public void Clear() { }
 
         public void Print(string message) { }

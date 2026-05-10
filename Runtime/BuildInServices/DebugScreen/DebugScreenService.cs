@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using FTFoundation.BuildInReferences;
 using FTFoundation.Core;
 using TMPro;
@@ -36,10 +37,23 @@ namespace FTFoundation.BuildInServices
         private GameObject ValueWatcherPanelContent { get; set; } = null!;
         private RectTransform ValueWatcherPanelContentRect { get; set; } = null!;
 
+        private Sprite panelImage = null!;
+
+        private static readonly float MenuWidth = 400f;
+        private static readonly float ItemRadius = 15f;
+        private static readonly float PixelPerUnitMultiplier = 10f;
+        private static readonly float GapSize = 10f;
+        private static readonly float FontSize = 25f;
+
+        private static readonly float ItemSize = ItemRadius * 2;
+        private static readonly float ItemSpace = ItemSize + GapSize;
+        private static readonly float HeaderHeight = ItemSize + (GapSize * 2);
+
         void Inject(IDedicatedObjectService dedicatedObjectService, ILifetimeService lifetimeService)
         {
             DedicatedObjectService = dedicatedObjectService;
 
+            panelImage = Resources.Load<Sprite>("square-rounded-512");
             ConstructObject();
 
             SelectTab("Terminal");
@@ -55,25 +69,32 @@ namespace FTFoundation.BuildInServices
 
             // Define object as canvas
             DedicatedObjectService.MakeCanvas(out Canvas canvas, out CanvasScaler scaler);
+            // scaler.scaleFactor = 0.5f;
 
             // Background
             GameObject panel = DedicatedObjectService.ConstructCanvasObject<Image>(UIPosition.Get(
-                new UIAnchored { anchor = 0, offset = 160f, size = 300 },
-                new UIStretch { anchorMin = 0, anchorMax = 1, offsetMin = 10f, offsetMax = -10f }
+                new UIAnchored { anchor = 0, offset = MenuWidth / 2 + GapSize * 2, size = MenuWidth },
+                new UIStretch { anchorMin = 0, anchorMax = 1, offsetMin = GapSize * 2, offsetMax = -GapSize * 2 }
             ), "Background", out var backgroundImage);
             backgroundImage.color = new Color(0, 0, 0, 0.5f);
+            backgroundImage.sprite = panelImage;
+            backgroundImage.type = Image.Type.Sliced;
+            backgroundImage.pixelsPerUnitMultiplier = PixelPerUnitMultiplier;
 
             // Header
             DedicatedObjectService.ConstructCanvasObject<Image>(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
-                new UIAnchored { anchor = 1f, offset = -15f, size = 30f }
+                new UIAnchored { anchor = 1f, offset = -HeaderHeight / 2, size = HeaderHeight }
             ), "Header", out var headerImage, panel);
             headerImage.color = new Color(0, 0, 0, 0.5f);
+            headerImage.sprite = panelImage;
+            headerImage.type = Image.Type.Sliced;
+            headerImage.pixelsPerUnitMultiplier = PixelPerUnitMultiplier;
 
             // Close Button
             ConstructButton(UIPosition.Get(
-                new UIAnchored { anchor = 1f, offset = 15f, size = 20f },
-                new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
+                new UIAnchored { anchor = 1f, offset = ItemRadius + GapSize, size = ItemSize },
+                new UIAnchored { anchor = 1f, offset = -(ItemRadius + GapSize), size = ItemSize }
             ), "X", Color.gray, out var closeButton, panel);
             closeButton.onClick.AddListener(() => Toggle());
 
@@ -85,7 +106,7 @@ namespace FTFoundation.BuildInServices
             // Terminal Button
             ConstructButton(UIPosition.Get(
                 new UIStretch { anchorMin = 0.02f, anchorMax = 0.32f, offsetMin = 0, offsetMax = 0 },
-                new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
+                new UIAnchored { anchor = 1f, offset = -(ItemRadius + GapSize), size = ItemSize }
             ), "Terminal", Color.gray, out var terminalButton, panel);
             TerminalButton = terminalButton;
             TerminalButton.onClick.AddListener(() => SelectTab("Terminal"));
@@ -93,7 +114,7 @@ namespace FTFoundation.BuildInServices
             // Button Panel Button
             ConstructButton(UIPosition.Get(
                 new UIStretch { anchorMin = 0.34f, anchorMax = 0.65f, offsetMin = 0, offsetMax = 0 },
-                new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
+                new UIAnchored { anchor = 1f, offset = -(ItemRadius + GapSize), size = ItemSize }
             ), "Buttons", Color.gray, out var buttonPanelButton, panel);
             ButtonPanelButton = buttonPanelButton;
             ButtonPanelButton.onClick.AddListener(() => SelectTab("ButtonPanel"));
@@ -101,7 +122,7 @@ namespace FTFoundation.BuildInServices
             // Value Watcher Panel Button
             ConstructButton(UIPosition.Get(
                 new UIStretch { anchorMin = 0.67f, anchorMax = 0.98f, offsetMin = 0, offsetMax = 0 },
-                new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
+                new UIAnchored { anchor = 1f, offset = -(ItemRadius + GapSize), size = ItemSize }
             ), "Values", Color.gray, out var valueWatcherPanelButton, panel);
             ValueWatcherPanelButton = valueWatcherPanelButton;
             ValueWatcherPanelButton.onClick.AddListener(() => SelectTab("ValueWatcherPanel"));
@@ -112,13 +133,13 @@ namespace FTFoundation.BuildInServices
             // Terminal
             Terminal = DedicatedObjectService.ConstructCanvasEmpty(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -30 }
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -HeaderHeight }
             ), "Terminal", parent);
 
             // Terminal ScrollView
             GameObject scrollView = DedicatedObjectService.ConstructCanvasObject<ScrollRect>(UIPosition.Get(
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 },
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 }
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -GapSize },
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -GapSize }
             ), "ScrollView", out var scrollRect, Terminal);
             TerminalScrollRect = scrollRect;
             GameObject viewport = DedicatedObjectService.ConstructCanvasObject<Mask>(UIPosition.FullScreen, "Viewport", out var maskComponent, scrollView);
@@ -128,7 +149,7 @@ namespace FTFoundation.BuildInServices
             scrollRect.viewport = viewport.GetComponent<RectTransform>();
 
             // Terminal Text
-            GameObject textObject = ConstructText(UIPosition.FullScreen, "", Color.white, 14, TextAlignmentOptions.TopLeft, out var textComponent, viewport);
+            GameObject textObject = ConstructText(UIPosition.FullScreen, "", Color.white, FontSize, TextAlignmentOptions.TopLeft, out var textComponent, viewport);
             TerminalText = textComponent;
             scrollRect.content = TerminalText.GetComponent<RectTransform>();
             textComponent.overflowMode = TextOverflowModes.ScrollRect;
@@ -136,8 +157,8 @@ namespace FTFoundation.BuildInServices
 
             // Clear Button
             ConstructButton(UIPosition.Get(
-                new UIAnchored { anchor = 1f, offset = 30f, size = 50f },
-                new UIAnchored { anchor = 1f, offset = -15f, size = 20f }
+                new UIAnchored { anchor = 1f, offset = (2.5f * ItemSize) / 2 + GapSize, size = 2.5f * ItemSize },
+                new UIAnchored { anchor = 1f, offset = -(ItemRadius + GapSize), size = ItemSize }
             ), "Clear", Color.gray, out var clearButton, Terminal);
             clearButton.onClick.AddListener(() => Clear());
         }
@@ -147,13 +168,20 @@ namespace FTFoundation.BuildInServices
             // Button Panel
             ButtonPanel = DedicatedObjectService.ConstructCanvasEmpty(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -30 }
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -HeaderHeight }
             ), "ButtonPanel", parent);
+
+            // Filter
+            GameObject filterObject = ConstructInput(UIPosition.Get(
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -GapSize },
+                new UIAnchored { anchor = 1f, offset = -(ItemRadius + GapSize), size = ItemSize }
+            ), "", "Search...", Color.gray, out var filterInput, ButtonPanel);
+            filterInput.onValueChanged.AddListener(value => RefreshContent(ButtonPanelContent.transform, ButtonPanelContentRect, value, ItemSize));
 
             // Button Panel ScrollView
             GameObject scrollView = DedicatedObjectService.ConstructCanvasObject<ScrollRect>(UIPosition.Get(
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 },
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 }
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -GapSize },
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -HeaderHeight }
             ), "ScrollView", out var scrollRect, ButtonPanel);
             GameObject viewport = DedicatedObjectService.ConstructCanvasObject<Mask>(UIPosition.FullScreen, "Viewport", out var maskComponent, scrollView);
             maskComponent.showMaskGraphic = false;
@@ -174,13 +202,20 @@ namespace FTFoundation.BuildInServices
             // Value Watcher Panel
             ValueWatcherPanel = DedicatedObjectService.ConstructCanvasEmpty(UIPosition.Get(
                 new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -30 }
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -HeaderHeight }
             ), "ValueWatcherPanel", parent);
+
+            // Filter
+            GameObject filterObject = ConstructInput(UIPosition.Get(
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -GapSize },
+                new UIAnchored { anchor = 1f, offset = -(ItemRadius + GapSize), size = ItemSize }
+            ), "", "Search...", Color.gray, out var filterInput, ValueWatcherPanel);
+            filterInput.onValueChanged.AddListener(value => RefreshContent(ValueWatcherPanelContent.transform, ValueWatcherPanelContentRect, value, ItemSize * 2));
 
             // Value Watcher Panel ScrollView
             GameObject scrollView = DedicatedObjectService.ConstructCanvasObject<ScrollRect>(UIPosition.Get(
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 },
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 5, offsetMax = -5 }
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -GapSize },
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -HeaderHeight }
             ), "ScrollView", out var scrollRect, ValueWatcherPanel);
             GameObject viewport = DedicatedObjectService.ConstructCanvasObject<Mask>(UIPosition.FullScreen, "Viewport", out var maskComponent, scrollView);
             maskComponent.showMaskGraphic = false;
@@ -198,7 +233,7 @@ namespace FTFoundation.BuildInServices
         #endregion
 
         #region Construction Helpers
-        private GameObject ConstructText(UIPosition pos, string text, Color color, int fontSize, TextAlignmentOptions alignment, out TextMeshProUGUI textComponent, GameObject? parent = null)
+        private GameObject ConstructText(UIPosition pos, string text, Color color, float fontSize, TextAlignmentOptions alignment, out TextMeshProUGUI textComponent, GameObject? parent = null)
         {
             GameObject textObject = DedicatedObjectService.ConstructCanvasObject(pos, "Text", out textComponent, parent);
             textComponent.text = text;
@@ -210,43 +245,114 @@ namespace FTFoundation.BuildInServices
             return textObject;
         }
 
-        public GameObject ConstructButton(UIPosition pos, string label, Color color, out Button buttonComponent, GameObject? parent = null)
+        public GameObject ConstructButton(UIPosition pos, string label, Color color, out Button buttonComponent, GameObject? parent = null, TextAlignmentOptions textAlignment = TextAlignmentOptions.Center, float labelPadding = 0)
         {
             GameObject buttonObject = DedicatedObjectService.ConstructCanvasObject(pos, label, out buttonComponent, parent);
-            buttonComponent.targetGraphic = buttonObject.AddComponent<Image>();
+            Image backgroundImage = buttonObject.AddComponent<Image>();
+            backgroundImage.sprite = panelImage;
+            backgroundImage.type = Image.Type.Sliced;
+            backgroundImage.pixelsPerUnitMultiplier = PixelPerUnitMultiplier;
+            buttonComponent.targetGraphic = backgroundImage;
             buttonComponent.targetGraphic.color = color;
 
-            ConstructText(UIPosition.FullScreen, label, Color.black, -1, TextAlignmentOptions.Center, out var textComponent, buttonObject);
+            ConstructText(UIPosition.Get(
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -labelPadding },
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 }
+            ), label, Color.black, -1, textAlignment, out var textComponent, buttonObject);
             textComponent.enableAutoSizing = true;
             textComponent.fontSizeMin = 1;
-            textComponent.fontSizeMax = 1000;
+            textComponent.fontSizeMax = FontSize;
+            textComponent.textWrappingMode = TextWrappingModes.NoWrap;
+            textComponent.overflowMode = TextOverflowModes.Overflow;
 
             return buttonObject;
         }
 
-        public GameObject ConstructInput(UIPosition pos, string placeholder, Color color, out TMP_InputField inputFieldComponent, GameObject? parent = null)
+        public GameObject ConstructInput(UIPosition pos, string label, string placeholder, Color color, out TMP_InputField inputFieldComponent, GameObject? parent = null)
         {
-            GameObject inputObject = DedicatedObjectService.ConstructCanvasObject(pos, placeholder, out inputFieldComponent, parent);
-            inputFieldComponent.targetGraphic = inputObject.AddComponent<Image>();
+            GameObject inputObject = DedicatedObjectService.ConstructCanvasObject(pos, label, out inputFieldComponent, parent);
+            Image backgroundImage = inputObject.AddComponent<Image>();
+            backgroundImage.sprite = panelImage;
+            backgroundImage.type = Image.Type.Sliced;
+            backgroundImage.pixelsPerUnitMultiplier = PixelPerUnitMultiplier;
+            inputFieldComponent.targetGraphic = backgroundImage;
             inputFieldComponent.targetGraphic.color = color;
 
-            GameObject textArea = DedicatedObjectService.ConstructCanvasObject<Mask>(UIPosition.FullScreen, "Text Area", out var maskComponent, inputObject);
+            if (label != "")
+            {
+                ConstructText(UIPosition.Get(
+                    new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -(ItemSize * 2 + GapSize * 3) },
+                    new UIStretch { anchorMin = 0.5f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 }
+                ), label, Color.black, -1, TextAlignmentOptions.Left, out var labelText, inputObject);
+                labelText.enableAutoSizing = true;
+                labelText.fontSizeMin = 1;
+                labelText.fontSizeMax = FontSize;
+                labelText.textWrappingMode = TextWrappingModes.NoWrap;
+                labelText.overflowMode = TextOverflowModes.Overflow;
+                labelText.fontStyle = FontStyles.Bold | FontStyles.Italic;
+            }
+
+            GameObject textArea = DedicatedObjectService.ConstructCanvasObject<Mask>(UIPosition.Get(
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -GapSize },
+                new UIStretch { anchorMin = 0f, anchorMax = label == "" ? 1 : 0.5f, offsetMin = 0, offsetMax = 0 }
+            ), "Text Area", out var maskComponent, inputObject);
             maskComponent.showMaskGraphic = false;
             inputFieldComponent.textViewport = textArea.GetComponent<RectTransform>();
 
-            ConstructText(UIPosition.FullScreen, placeholder, Color.black, -1, TextAlignmentOptions.Left, out var textComponent, textArea);
-            textComponent.enableAutoSizing = true;
-            textComponent.fontSizeMin = 1;
-            textComponent.fontSizeMax = 1000;
-            inputFieldComponent.textComponent = textComponent;
+            ConstructText(UIPosition.FullScreen, placeholder, Color.black, -1, TextAlignmentOptions.Left, out var inputText, textArea);
+            inputText.enableAutoSizing = true;
+            inputText.fontSizeMin = 1;
+            inputText.fontSizeMax = FontSize;
+            inputText.overflowMode = TextOverflowModes.Overflow;
+            inputFieldComponent.textComponent = inputText;
 
-            ConstructText(UIPosition.FullScreen, placeholder, Color.black, -1, TextAlignmentOptions.Left, out var placeholderComponent, textArea);
-            placeholderComponent.enableAutoSizing = true;
-            placeholderComponent.fontSizeMin = 1;
-            placeholderComponent.fontSizeMax = 1000;
-            inputFieldComponent.placeholder = placeholderComponent;
+            ConstructText(UIPosition.FullScreen, placeholder, Color.black, -1, TextAlignmentOptions.Left, out var placeholderText, textArea);
+            placeholderText.enableAutoSizing = true;
+            placeholderText.fontSizeMin = 1;
+            placeholderText.fontSizeMax = FontSize;
+            placeholderText.overflowMode = TextOverflowModes.Overflow;
+            placeholderText.fontStyle = FontStyles.Italic;
+            inputFieldComponent.placeholder = placeholderText;
+            WrapModeFixer.Fix(inputObject, inputText, placeholderText);
 
             return inputObject;
+        }
+
+        public GameObject ConstructToggle(UIPosition pos, string label, Color color, out Toggle toggleComponent, GameObject? parent = null)
+        {
+            GameObject toggleObject = DedicatedObjectService.ConstructCanvasObject(pos, label, out toggleComponent, parent);
+            Image backgroundImage = toggleObject.AddComponent<Image>();
+            backgroundImage.sprite = panelImage;
+            backgroundImage.type = Image.Type.Sliced;
+            backgroundImage.pixelsPerUnitMultiplier = PixelPerUnitMultiplier;
+            toggleComponent.targetGraphic = backgroundImage;
+            toggleComponent.targetGraphic.color = color;
+
+            if (label != "")
+            {
+                ConstructText(UIPosition.Get(
+                    new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -(ItemSize * 2 + GapSize * 3) },
+                    new UIStretch { anchorMin = 0.5f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 }
+                ), label, Color.black, -1, TextAlignmentOptions.Left, out var labelText, toggleObject);
+                labelText.enableAutoSizing = true;
+                labelText.fontSizeMin = 1;
+                labelText.fontSizeMax = FontSize;
+                labelText.textWrappingMode = TextWrappingModes.NoWrap;
+                labelText.overflowMode = TextOverflowModes.Overflow;
+                labelText.fontStyle = FontStyles.Bold | FontStyles.Italic;
+            }
+
+            ConstructText(UIPosition.Get(
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = GapSize, offsetMax = -GapSize },
+                new UIStretch { anchorMin = 0f, anchorMax = label == "" ? 1 : 0.5f, offsetMin = 0, offsetMax = 0 }
+            ), toggleComponent.isOn ? "- True" : "- False", Color.black, -1, TextAlignmentOptions.Left, out var stateText, toggleObject);
+            toggleComponent.onValueChanged.AddListener(isOn => stateText.text = isOn ? "- True" : "- False");
+            stateText.enableAutoSizing = true;
+            stateText.fontSizeMin = 1;
+            stateText.fontSizeMax = FontSize;
+            stateText.fontStyle = FontStyles.Italic;
+
+            return toggleObject;
         }
         #endregion
 
@@ -296,13 +402,10 @@ namespace FTFoundation.BuildInServices
 
         public IDisposable AddButton(string label, Action onClick, Color? color = null, Key? hotkey = null)
         {
-            float offset = ButtonPanelContent.transform.childCount * 25f + 15f;
-            ButtonPanelContentRect.sizeDelta = new Vector2(0, offset + 10f);
-
             GameObject button = ConstructButton(UIPosition.Get(
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -30 },
-                new UIAnchored { anchor = 1f, offset = -offset, size = 20f }
-            ), label, color ?? Color.gray, out var buttonComponent, ButtonPanelContent);
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
+                new UIAnchored { anchor = 1f, offset = 0, size = ItemSize }
+            ), label, color ?? Color.gray, out var buttonComponent, ButtonPanelContent, TextAlignmentOptions.Left, hotkey == null ? 0 : ItemSize * 2 + GapSize * 2);
             buttonComponent.onClick.AddListener(() => onClick());
 
             if (hotkey != null)
@@ -314,10 +417,12 @@ namespace FTFoundation.BuildInServices
                 HotkeyButtonMap[hotkey.Value].Add(buttonComponent);
 
                 ConstructText(UIPosition.Get(
-                    new UIAnchored { anchor = 1f, offset = 15f, size = 20f },
-                    new UIAnchored { anchor = 1f, offset = -10f, size = 20f }
-                ), hotkey.ToString() ?? "", Color.white, 14, TextAlignmentOptions.Center, out var textComponent, button);
+                    new UIAnchored { anchor = 1f, offset = -((ItemSize * 2 + GapSize) / 2), size = ItemSize * 2 + GapSize },
+                    new UIAnchored { anchor = 1f, offset = -ItemRadius, size = ItemSize }
+                ), hotkey.ToString() ?? "", Color.white, FontSize, TextAlignmentOptions.Center, out var textComponent, button);
             }
+
+            RefreshContent(ButtonPanelContent.transform, ButtonPanelContentRect, "", ItemSize);
 
             return new DelegateDisposable(() => RemoveButton(button, hotkey));
         }
@@ -337,30 +442,140 @@ namespace FTFoundation.BuildInServices
 
         public IDisposable AddValueWatcher(string label, Saveable<string> saveable, Color? color = null)
         {
-            float offset = ValueWatcherPanelContent.transform.childCount * 25f + 15f;
-            ValueWatcherPanelContentRect.sizeDelta = new Vector2(0, offset + 10f);
-
             GameObject inputObject = ConstructInput(UIPosition.Get(
-                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = -50 },
-                new UIAnchored { anchor = 1f, offset = -offset, size = 20f }
-            ), label, color ?? Color.gray, out var inputFieldComponent, ValueWatcherPanelContent);
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
+                new UIAnchored { anchor = 1f, offset = 0, size = ItemSize }
+            ), label, "Value...", color ?? Color.gray, out var inputFieldComponent, ValueWatcherPanelContent);
             inputFieldComponent.text = saveable.Get();
-            inputFieldComponent.onValueChanged.AddListener(value => saveable.Set(value));
             IDisposable binding = saveable.Bind(value => inputFieldComponent.text = value);
 
-            GameObject saveButtonObject = ConstructButton(UIPosition.Get(
-                new UIAnchored { anchor = 1f, offset = -35f, size = 20f },
-                new UIAnchored { anchor = 1f, offset = -offset, size = 20f }
-            ), "S", Color.gray, out var saveButtonComponent, ValueWatcherPanelContent);
-            saveButtonComponent.onClick.AddListener(() => saveable.Save());
+            AddValuewatcherButtons(inputObject, saveable, color, out var saveButtonObject, out var restoreButtonObject);
+            inputFieldComponent.onValueChanged.AddListener(value =>
+            {
+                saveable.Set(value);
 
-            GameObject restoreButtonObject = ConstructButton(UIPosition.Get(
-                new UIAnchored { anchor = 1f, offset = -10f, size = 20f },
-                new UIAnchored { anchor = 1f, offset = -offset, size = 20f }
-            ), "R", Color.gray, out var restoreButtonComponent, ValueWatcherPanelContent);
-            restoreButtonComponent.onClick.AddListener(() => saveable.Restore());
+                saveButtonObject.SetActive(saveable.IsDirty);
+                restoreButtonObject.SetActive(saveable.IsDirty);
+            });
+            saveButtonObject.SetActive(saveable.IsDirty);
+            restoreButtonObject.SetActive(saveable.IsDirty);
+
+            RefreshContent(ValueWatcherPanelContent.transform, ValueWatcherPanelContentRect, "", ItemSize * 2);
 
             return new DelegateDisposable(() => RemoveValueWatcher(inputObject, saveButtonObject, restoreButtonObject, binding));
+        }
+
+        public IDisposable AddValueWatcher(string label, Saveable<int> saveable, Color? color = null)
+        {
+            GameObject inputObject = ConstructInput(UIPosition.Get(
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
+                new UIAnchored { anchor = 1f, offset = 0, size = ItemSize }
+            ), label, "Value...", color ?? Color.gray, out var inputFieldComponent, ValueWatcherPanelContent);
+            inputFieldComponent.text = saveable.Get().ToString();
+            IDisposable binding = saveable.Bind(value => inputFieldComponent.text = value.ToString());
+
+            AddValuewatcherButtons(inputObject, saveable, color, out var saveButtonObject, out var restoreButtonObject);
+            inputFieldComponent.onValueChanged.AddListener(value =>
+            {
+                string regex = Regex.Replace(value, "[^0-9]", "");
+                if (regex == "") regex = "0";
+                saveable.Set(int.Parse(regex));
+                if (regex != value) inputFieldComponent.text = regex;
+
+                saveButtonObject.SetActive(saveable.IsDirty);
+                restoreButtonObject.SetActive(saveable.IsDirty);
+            });
+            saveButtonObject.SetActive(saveable.IsDirty);
+            restoreButtonObject.SetActive(saveable.IsDirty);
+
+            RefreshContent(ValueWatcherPanelContent.transform, ValueWatcherPanelContentRect, "", ItemSize * 2);
+
+            return new DelegateDisposable(() => RemoveValueWatcher(inputObject, saveButtonObject, restoreButtonObject, binding));
+        }
+
+        public IDisposable AddValueWatcher(string label, Saveable<float> saveable, Color? color = null)
+        {
+            GameObject inputObject = ConstructInput(UIPosition.Get(
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
+                new UIAnchored { anchor = 1f, offset = 0, size = ItemSize }
+            ), label, "Value...", color ?? Color.gray, out var inputFieldComponent, ValueWatcherPanelContent);
+            inputFieldComponent.text = saveable.Get().ToString();
+            IDisposable binding = saveable.Bind(value => inputFieldComponent.text = value.ToString());
+
+            AddValuewatcherButtons(inputObject, saveable, color, out var saveButtonObject, out var restoreButtonObject);
+            inputFieldComponent.onValueChanged.AddListener(value =>
+            {
+                string regex = Regex.Match(value, @"^\d*\.?\d*").Value;
+                if (regex == "") regex = "0";
+                saveable.Set(float.Parse(regex));
+                if (regex != value) inputFieldComponent.text = regex;
+
+                saveButtonObject.SetActive(saveable.IsDirty);
+                restoreButtonObject.SetActive(saveable.IsDirty);
+            });
+            saveButtonObject.SetActive(saveable.IsDirty);
+            restoreButtonObject.SetActive(saveable.IsDirty);
+
+            RefreshContent(ValueWatcherPanelContent.transform, ValueWatcherPanelContentRect, "", ItemSize * 2);
+
+            return new DelegateDisposable(() => RemoveValueWatcher(inputObject, saveButtonObject, restoreButtonObject, binding));
+        }
+
+        public IDisposable AddValueWatcher(string label, Saveable<bool> saveable, Color? color = null)
+        {
+            GameObject inputObject = ConstructToggle(UIPosition.Get(
+                new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
+                new UIAnchored { anchor = 1f, offset = 0, size = ItemSize }
+            ), label, color ?? Color.gray, out var inputFieldComponent, ValueWatcherPanelContent);
+            inputFieldComponent.isOn = saveable.Get();
+            IDisposable binding = saveable.Bind(value => inputFieldComponent.isOn = value);
+
+            AddValuewatcherButtons(inputObject, saveable, color, out var saveButtonObject, out var restoreButtonObject);
+            inputFieldComponent.onValueChanged.AddListener(value =>
+            {
+                saveable.Set(value);
+
+                saveButtonObject.SetActive(saveable.IsDirty);
+                restoreButtonObject.SetActive(saveable.IsDirty);
+            });
+            saveButtonObject.SetActive(saveable.IsDirty);
+            restoreButtonObject.SetActive(saveable.IsDirty);
+
+            RefreshContent(ValueWatcherPanelContent.transform, ValueWatcherPanelContentRect, "", ItemSize * 2);
+
+            return new DelegateDisposable(() => RemoveValueWatcher(inputObject, saveButtonObject, restoreButtonObject, binding));
+        }
+
+        private void AddValuewatcherButtons(GameObject inputObject, ISaveable saveable, Color? color, out GameObject saveButtonObject, out GameObject restoreButtonObject)
+        {
+            GameObject saveButtonObject_ = ConstructButton(UIPosition.Get(
+                new UIAnchored { anchor = 1f, offset = -(ItemRadius * 3 + GapSize), size = ItemSize },
+                new UIAnchored { anchor = 1f, offset = -ItemRadius, size = ItemSize }
+            ), "S", color ?? new Color(0, 0, 0, 0.5f), out var saveButtonComponent, inputObject);
+
+            GameObject restoreButtonObject_ = ConstructButton(UIPosition.Get(
+                new UIAnchored { anchor = 1f, offset = -ItemRadius, size = ItemSize },
+                new UIAnchored { anchor = 1f, offset = -ItemRadius, size = ItemSize }
+            ), "R", color ?? new Color(0, 0, 0, 0.5f), out var restoreButtonComponent, inputObject);
+
+            saveButtonComponent.onClick.AddListener(() =>
+            {
+                saveable.Save();
+
+                saveButtonObject_.SetActive(saveable.IsDirty);
+                restoreButtonObject_.SetActive(saveable.IsDirty);
+            });
+
+            restoreButtonComponent.onClick.AddListener(() =>
+            {
+                saveable.Restore();
+
+                saveButtonObject_.SetActive(saveable.IsDirty);
+                restoreButtonObject_.SetActive(saveable.IsDirty);
+            });
+
+            saveButtonObject = saveButtonObject_;
+            restoreButtonObject = restoreButtonObject_;
         }
 
         private void RemoveValueWatcher(GameObject inputObject, GameObject saveButtonObject, GameObject restoreButtonObject, IDisposable binding)
@@ -381,6 +596,41 @@ namespace FTFoundation.BuildInServices
             ButtonPanel.SetActive(tabName == "ButtonPanel");
             ValueWatcherPanel.SetActive(tabName == "ValueWatcherPanel");
         }
+
+        private void RefreshContent(Transform contentTransform, RectTransform contentRect, string filter, float itemHeight)
+        {
+            int activeCount = 0;
+            for (int i = 0; i < contentTransform.childCount; i++)
+            {
+                GameObject child = contentTransform.GetChild(i).gameObject;
+                bool matchesFilter = string.IsNullOrEmpty(filter) || child.name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
+                child.SetActive(matchesFilter);
+                UIPosition.Get(
+                    new UIStretch { anchorMin = 0f, anchorMax = 1f, offsetMin = 0, offsetMax = 0 },
+                    new UIAnchored { anchor = 1f, offset = -(activeCount * (itemHeight + GapSize) + (itemHeight / 2)), size = itemHeight }
+                ).SetTransform(child.GetComponent<RectTransform>());
+                if (matchesFilter) activeCount++;
+            }
+            contentRect.sizeDelta = new Vector2(0, activeCount * (itemHeight + GapSize) + GapSize);
+        }
         #endregion
+
+        // Setting textWrappingMode to NoWrap in late update to fix an issue where the text component resets it to Wrap when instantiated
+        private class WrapModeFixer : MonoBehaviour
+        {
+            private TMP_Text[] _targets = null!;
+
+            public static void Fix(GameObject host, params TMP_Text[] targets)
+            {
+                host.AddComponent<WrapModeFixer>()._targets = targets;
+            }
+
+            private void LateUpdate()
+            {
+                foreach (var t in _targets)
+                    t.textWrappingMode = TextWrappingModes.NoWrap;
+                Destroy(this);
+            }
+        }
     }
 }

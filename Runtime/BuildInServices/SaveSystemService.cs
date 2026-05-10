@@ -24,6 +24,9 @@ namespace FTFoundation.BuildInServices
                     }
                     saveables[saveable.Id] = saveable;
                     if (saveable is Saveable<string> stringSaveable) debugScreenService.AddValueWatcher(saveable.Id, stringSaveable);
+                    else if (saveable is Saveable<int> intSaveable) debugScreenService.AddValueWatcher(saveable.Id, intSaveable);
+                    else if (saveable is Saveable<float> floatSaveable) debugScreenService.AddValueWatcher(saveable.Id, floatSaveable);
+                    else if (saveable is Saveable<bool> boolSaveable) debugScreenService.AddValueWatcher(saveable.Id, boolSaveable);
                 }
             }
         }

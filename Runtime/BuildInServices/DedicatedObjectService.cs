@@ -33,8 +33,8 @@ namespace FTFoundation.BuildInServices
             canvas.vertexColorAlwaysGammaSpace = true;
             canvas.pixelPerfect = false;
 
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-            scaler.scaleFactor = 1f;
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
         }
 
         public GameObject ConstructEmpty(Position pos, string name, GameObject? parent = null)
