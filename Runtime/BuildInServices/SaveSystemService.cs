@@ -1,3 +1,4 @@
+#nullable enable
 using System.Collections.Generic;
 using System.Linq;
 using FTFoundation.BuildInReferences;
@@ -10,9 +11,14 @@ namespace FTFoundation.BuildInServices
     public partial class SaveSystemService : ISaveSystemService
     {
         private readonly Dictionary<string, ISaveable> saveables = new();
+        private IFileSaveService? _fileSaveService;
+        private ILoggerService _loggerService = null!;
 
-        void Inject(IReadOnlyList<ISaveSystemConfiguration> configurations, IDebugScreenService debugScreenService, ILoggerService loggerService)
+        void Inject(IReadOnlyList<ISaveSystemConfiguration> configurations, IDebugScreenService debugScreenService, ILoggerService loggerService, IFileSaveService? fileSaveService = null)
         {
+            _fileSaveService = fileSaveService;
+            _loggerService = loggerService;
+
             foreach (ISaveSystemConfiguration config in configurations)
             {
                 foreach (ISaveable saveable in config.Saveables)
@@ -29,6 +35,8 @@ namespace FTFoundation.BuildInServices
                     else if (saveable is Saveable<bool> boolSaveable) debugScreenService.AddValueWatcher(saveable.Id, boolSaveable);
                 }
             }
+
+            Restore();
         }
 
         public Saveable<T> GetSaveable<T>(string id)
@@ -41,11 +49,22 @@ namespace FTFoundation.BuildInServices
         public void SaveAll()
         {
             saveables.Values.ToList().ForEach(saveable => saveable.Save());
+            _fileSaveService?.Flush();
         }
 
         public void Restore()
         {
-            saveables.Values.ToList().ForEach(saveable => saveable.Restore());
+            foreach (ISaveable saveable in saveables.Values)
+            {
+                try
+                {
+                    saveable.Restore();
+                }
+                catch (System.Exception e)
+                {
+                    _loggerService.LogWarning($"[SaveSystemService] Failed to restore saveable '{saveable.Id}': {e.Message}");
+                }
+            }
         }
     }
 }

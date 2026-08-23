@@ -5,7 +5,7 @@ namespace FTFoundation.BuildInReferences
 {
     public class PrefsSaveable<T> : Saveable<T>
     {
-        public PrefsSaveable(string id, T defaultValue)
+        private PrefsSaveable(string id, T defaultValue)
             : base(id, defaultValue)
         {
             if (PlayerPrefs.HasKey(Id))
@@ -13,6 +13,26 @@ namespace FTFoundation.BuildInReferences
                 IsDirty = true;
                 Restore();
             }
+        }
+
+        public static PrefsSaveable<string> Create(string id, string defaultValue)
+        {
+            return new PrefsSaveable<string>(id, defaultValue);
+        }
+
+        public static PrefsSaveable<int> Create(string id, int defaultValue)
+        {
+            return new PrefsSaveable<int>(id, defaultValue);
+        }
+
+        public static PrefsSaveable<float> Create(string id, float defaultValue)
+        {
+            return new PrefsSaveable<float>(id, defaultValue);
+        }
+
+        public static PrefsSaveable<bool> Create(string id, bool defaultValue)
+        {
+            return new PrefsSaveable<bool>(id, defaultValue);
         }
 
         public override void Save()
