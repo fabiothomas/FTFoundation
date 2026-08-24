@@ -15,6 +15,15 @@ namespace FTFoundation.Core
         private static readonly Dictionary<Type, Func<object>> serviceFactories = new();
         private static readonly Dictionary<Type, Action<object, int, ServiceTargetData>> injectionActions = new();
 
+        // LambdaExpression.Compile(preferInterpretation: false) JIT-compiles a delegate via
+        // System.Reflection.Emit, which is unavailable under IL2CPP AOT. On an IL2CPP build we must
+        // fall back to the interpreted (slower, but AOT-safe) execution path instead.
+#if ENABLE_IL2CPP
+        private const bool PreferInterpretation = true;
+#else
+        private const bool PreferInterpretation = false;
+#endif
+
         internal static void Clear()
         {
             serviceFactories.Clear();
@@ -38,7 +47,7 @@ namespace FTFoundation.Core
             if (serviceFactories.ContainsKey(implementationType)) return;
             var newExpression = Expression.New(implementationType);
             var lambda = Expression.Lambda<Func<object>>(newExpression);
-            serviceFactories[implementationType] = lambda.Compile(preferInterpretation: false);
+            serviceFactories[implementationType] = lambda.Compile(PreferInterpretation);
         }
 
         // An injection action scans for injectable properties and method parameters and performs
@@ -64,7 +73,7 @@ namespace FTFoundation.Core
         private static Action<object, int, ServiceTargetData> CreateInjectionAction(Type injectionObjectType, List<PropertyInfo> configProperties, List<PropertyInfo> injectableProperties, MethodInfo? injectMethod)
         {
             var objParameter = Expression.Parameter(typeof(object), "obj");
-            var sceneIndexParameter = Expression.Parameter(typeof(int), "sceneIndex");
+            var sceneHandleParameter = Expression.Parameter(typeof(int), "sceneHandle");
             var serviceTargetDataParameter = Expression.Parameter(typeof(ServiceTargetData), "target");
 
             var typedObj = Expression.Convert(objParameter, injectionObjectType);
@@ -101,7 +110,7 @@ namespace FTFoundation.Core
                   new Expression[]
                   {
             Expression.Constant(property.PropertyType),
-            sceneIndexParameter,
+            sceneHandleParameter,
             serviceTargetDataParameter,
             Expression.Constant(isOptional)
                   }
@@ -131,7 +140,7 @@ namespace FTFoundation.Core
                       new Expression[]
                       {
                 Expression.Constant(p.ParameterType),
-                sceneIndexParameter,
+                sceneHandleParameter,
                 serviceTargetDataParameter,
                 Expression.Constant(false)
                       }
@@ -155,12 +164,12 @@ namespace FTFoundation.Core
             var parameterExpressions = new ParameterExpression[]
             {
         objParameter,
-        sceneIndexParameter,
+        sceneHandleParameter,
         serviceTargetDataParameter
             };
             var lambda = Expression.Lambda<Action<object, int, ServiceTargetData>>(block, parameterExpressions);
 
-            return lambda.Compile(preferInterpretation: false);
+            return lambda.Compile(PreferInterpretation);
         }
     }
 }

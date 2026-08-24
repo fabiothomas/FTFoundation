@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -11,6 +12,10 @@ namespace FTFoundation.Core
     internal static class ServiceResolver
     {
         private static readonly Dictionary<Type, object> singletons = new();
+
+        // Keyed by Scene.handle, which is unique per *loaded instance* of a scene — unlike
+        // Scene.sceneHandle, which is shared by every additively-loaded copy of the same scene asset
+        // and would otherwise let duplicate scene instances tear down each other's scoped services.
         private static readonly Dictionary<int, Dictionary<Type, object>> scoped = new();
 
         // Singleton/scoped stores for non-winner types in multi-service injection
@@ -24,6 +29,11 @@ namespace FTFoundation.Core
         // transients are appended to the list. Null when not in an active injection call.
         [ThreadStatic] internal static List<object>? CurrentTransientContext;
 
+        // Concrete types currently mid-construction on this thread. A type re-entering this list
+        // before its own construction has finished means A (transitively) depends on itself —
+        // without this guard that recursion would blow the stack instead of failing cleanly.
+        [ThreadStatic] private static List<Type>? resolutionStack;
+
         internal static void Clear()
         {
             singletons.Clear();
@@ -33,15 +43,9 @@ namespace FTFoundation.Core
             transientDependencies.Clear();
         }
 
-        // Called directly by ServiceProvider for eagerly-instantiated startup singletons.
-        internal static void RegisterStartupSingleton(Type iface, object instance)
-        {
-            singletons.Add(iface, instance);
-        }
-
         // Resolved at runtime via a pre-compiled Expression tree built in ServiceCompiler.
         // Must be internal (not private) so Expression.Call can reference it across classes.
-        internal static object? GetService(Type _interface, int sceneIndex, ServiceTargetData target, bool optional)
+        internal static object? GetService(Type _interface, int sceneHandle, ServiceTargetData target, bool optional)
         {
             if (_interface == typeof(IServiceTargetData)) return target;
 
@@ -53,7 +57,7 @@ namespace FTFoundation.Core
                     genericDef == typeof(IEnumerable<>) ||
                     genericDef == typeof(List<>))
                 {
-                    return GetMultiService(_interface.GetGenericArguments()[0], sceneIndex, target);
+                    return GetMultiService(_interface.GetGenericArguments()[0], sceneHandle, target);
                 }
             }
 
@@ -69,28 +73,28 @@ namespace FTFoundation.Core
             switch (type)
             {
                 case ServiceType.TRANSIENT:
-                    object newTransient = CreateService(service, _interface, sceneIndex, ServiceTargetDataType.NONE, target);
+                    object newTransient = CreateService(service, _interface, sceneHandle, ServiceTargetDataType.NONE, target);
                     CurrentTransientContext?.Add(newTransient);
                     return newTransient;
 
                 case ServiceType.SINGLETON:
                     if (singletons.TryGetValue(_interface, out object singletonObj)) return singletonObj;
 
-                    sceneIndex = -1;
+                    sceneHandle = -1;
 
-                    object newSingleton = CreateService(service, _interface, sceneIndex, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
+                    object newSingleton = CreateService(service, _interface, sceneHandle, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
                     singletons.Add(_interface, newSingleton);
                     return newSingleton;
 
                 case ServiceType.SCOPED:
-                    if (sceneIndex < 0) throw new UnityException($"Service '{_interface.Name}' is a scoped service and cannot be injected into a singleton service");
+                    if (sceneHandle < 0) throw new UnityException($"Service '{_interface.Name}' is a scoped service and cannot be injected into a singleton service");
 
-                    if (scoped.TryGetValue(sceneIndex, out var scopedDict) && scopedDict.TryGetValue(_interface, out object scopedTransientObj)) return scopedTransientObj;
+                    if (scoped.TryGetValue(sceneHandle, out var scopedDict) && scopedDict.TryGetValue(_interface, out object scopedTransientObj)) return scopedTransientObj;
 
                     var outerContext = CurrentTransientContext;
                     CurrentTransientContext = new List<object>();
 
-                    object newScoped = CreateService(service, _interface, sceneIndex, ServiceTargetDataType.SCOPED, ServiceTargetData.EmptyServiceTargetData());
+                    object newScoped = CreateService(service, _interface, sceneHandle, ServiceTargetDataType.SCOPED, ServiceTargetData.EmptyServiceTargetData());
 
                     var ownedTransients = CurrentTransientContext;
                     CurrentTransientContext = outerContext;
@@ -105,7 +109,7 @@ namespace FTFoundation.Core
                     }
 
                     if (scopedDict != null) scopedDict.Add(_interface, newScoped);
-                    else scoped.Add(sceneIndex, new() { { _interface, newScoped } });
+                    else scoped.Add(sceneHandle, new() { { _interface, newScoped } });
 
                     return newScoped;
 
@@ -116,7 +120,7 @@ namespace FTFoundation.Core
 
         // Returns a List<T> (cast to object) containing instances of every profile-active implementation
         // of elementType, respecting each implementation's service lifetime.
-        private static object GetMultiService(Type elementType, int sceneIndex, ServiceTargetData target)
+        private static object GetMultiService(Type elementType, int sceneHandle, ServiceTargetData target)
         {
             var listType = typeof(List<>).MakeGenericType(elementType);
             var list = (System.Collections.IList)Activator.CreateInstance(listType)!;
@@ -132,7 +136,7 @@ namespace FTFoundation.Core
                 switch (attr.Type)
                 {
                     case ServiceType.TRANSIENT:
-                        instance = CreateService(concreteType, elementType, sceneIndex, ServiceTargetDataType.NONE, target);
+                        instance = CreateService(concreteType, elementType, sceneHandle, ServiceTargetDataType.NONE, target);
                         CurrentTransientContext?.Add(instance);
                         break;
 
@@ -149,15 +153,15 @@ namespace FTFoundation.Core
                         }
                         else
                         {
-                            instance = CreateService(concreteType, elementType, sceneIndex, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
+                            instance = CreateService(concreteType, elementType, sceneHandle, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
                             multiSingletons[concreteType] = instance;
                         }
                         break;
 
                     case ServiceType.SCOPED:
-                        if (sceneIndex < 0) throw new UnityException($"Scoped service '{elementType.Name}' cannot be injected into a singleton");
+                        if (sceneHandle < 0) throw new UnityException($"Scoped service '{elementType.Name}' cannot be injected into a singleton");
 
-                        if (multiScoped.TryGetValue(sceneIndex, out var multiScopedDict) && multiScopedDict.TryGetValue(concreteType, out var scopedInst))
+                        if (multiScoped.TryGetValue(sceneHandle, out var multiScopedDict) && multiScopedDict.TryGetValue(concreteType, out var scopedInst))
                         {
                             instance = scopedInst;
                         }
@@ -166,7 +170,7 @@ namespace FTFoundation.Core
                             var outerCtx = CurrentTransientContext;
                             CurrentTransientContext = new List<object>();
 
-                            instance = CreateService(concreteType, elementType, sceneIndex, ServiceTargetDataType.SCOPED, ServiceTargetData.EmptyServiceTargetData());
+                            instance = CreateService(concreteType, elementType, sceneHandle, ServiceTargetDataType.SCOPED, ServiceTargetData.EmptyServiceTargetData());
 
                             var ownedCtx = CurrentTransientContext;
                             CurrentTransientContext = outerCtx;
@@ -181,7 +185,7 @@ namespace FTFoundation.Core
                             }
 
                             if (multiScopedDict != null) multiScopedDict[concreteType] = instance;
-                            else multiScoped[sceneIndex] = new Dictionary<Type, object> { { concreteType, instance } };
+                            else multiScoped[sceneHandle] = new Dictionary<Type, object> { { concreteType, instance } };
                         }
                         break;
 
@@ -195,9 +199,9 @@ namespace FTFoundation.Core
             return list;
         }
 
-        internal static void CleanupScoped(int buildIndex)
+        internal static void CleanupScoped(int sceneHandle)
         {
-            if (scoped.TryGetValue(buildIndex, out var scopedDict))
+            if (scoped.TryGetValue(sceneHandle, out var scopedDict))
             {
                 foreach (var instance in scopedDict.Values)
                 {
@@ -208,10 +212,10 @@ namespace FTFoundation.Core
                         transientDependencies.Remove(instance);
                     }
                 }
-                scoped.Remove(buildIndex);
+                scoped.Remove(sceneHandle);
             }
 
-            if (multiScoped.TryGetValue(buildIndex, out var multiScopedDict))
+            if (multiScoped.TryGetValue(sceneHandle, out var multiScopedDict))
             {
                 foreach (var instance in multiScopedDict.Values)
                 {
@@ -222,24 +226,39 @@ namespace FTFoundation.Core
                         transientDependencies.Remove(instance);
                     }
                 }
-                multiScoped.Remove(buildIndex);
+                multiScoped.Remove(sceneHandle);
             }
         }
 
-        private static object CreateService(Type service, Type serviceInterface, int sceneIndex, ServiceTargetDataType dataType, ServiceTargetData target)
+        private static object CreateService(Type service, Type serviceInterface, int sceneHandle, ServiceTargetDataType dataType, ServiceTargetData target)
         {
+            var stack = resolutionStack ??= new List<Type>();
+            if (stack.Contains(service))
+            {
+                string chain = string.Join(" → ", stack.Select(t => t.Name).Concat(new[] { service.Name }));
+                throw new UnityException($"Circular dependency detected while resolving service '{serviceInterface.Name}': {chain}");
+            }
+
             if (!ServiceCompiler.TryGetFactory(service, out var factory))
             {
                 throw new InvalidOperationException($"No factory compiled for '{service.Name}'. Ensure the type is registered as a service.");
             }
 
-            var obj = factory();
+            stack.Add(service);
+            try
+            {
+                var obj = factory();
 
-            if (target.IsUnknown()) target = new(service.Name, dataType, service, obj);
+                if (target.IsUnknown()) target = new(service.Name, dataType, service, obj);
 
-            ServiceProvider.InjectDependencies(obj, sceneIndex, target);
+                ServiceProvider.InjectDependencies(obj, sceneHandle, target);
 
-            return obj;
+                return obj;
+            }
+            finally
+            {
+                stack.RemoveAt(stack.Count - 1);
+            }
         }
     }
 }

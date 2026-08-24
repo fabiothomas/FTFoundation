@@ -82,7 +82,13 @@ namespace FTFoundation.Core
 
             try
             {
-                object converted = Convert.ChangeType(raw, property.PropertyType)!;
+                // Convert.ChangeType can't target an enum or a Nullable<T> directly — unwrap to the
+                // underlying type (int for a non-nullable enum, T for Nullable<T>) before converting,
+                // then let SetValue's implicit T → Nullable<T> boxing handle re-wrapping if needed.
+                Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                object converted = targetType.IsEnum
+                    ? Enum.Parse(targetType, raw!, ignoreCase: true)
+                    : Convert.ChangeType(raw, targetType)!;
                 property.SetValue(instance, converted);
             }
             catch (Exception e)

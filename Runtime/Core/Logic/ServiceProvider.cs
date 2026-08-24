@@ -103,6 +103,10 @@ namespace FTFoundation.Core
       }
 
       // ── Eagerly instantiate startup singletons ────────────────────────────────────────────
+      // Routed through ServiceResolver.GetService (the same path lazy singletons use) so there is
+      // exactly one construction path per interface. This also means a cycle between two eager
+      // startups is caught by the resolution-stack guard in ServiceResolver instead of causing a
+      // duplicate instance to be constructed and the original silently evicted from serviceCache.
       foreach (var t in resolved.EagerStartups)
       {
         ServiceAttribute attribute = (ServiceAttribute)t.GetCustomAttribute(typeof(ServiceAttribute), inherit: true);
@@ -110,10 +114,7 @@ namespace FTFoundation.Core
 
         try
         {
-          var obj = Activator.CreateInstance(t);
-          ServiceTargetData target = new(t.Name, ServiceTargetDataType.SINGLETON, t, obj);
-          InjectDependencies(obj, -1, target);
-          ServiceResolver.RegisterStartupSingleton(attribute.Interface, obj);
+          ServiceResolver.GetService(attribute.Interface, -1, ServiceTargetData.EmptyServiceTargetData(), optional: false);
         }
         catch (Exception e)
         {
@@ -151,7 +152,7 @@ namespace FTFoundation.Core
       ServiceTargetData target = new(instance.name, ServiceTargetDataType.MONOBEHAVIOUR, instance.GetType(), instance);
 
       ServiceResolver.CurrentTransientContext = new System.Collections.Generic.List<object>();
-      InjectDependencies(instance, instance.gameObject.scene.buildIndex, target);
+      InjectDependencies(instance, instance.gameObject.scene.handle, target);
       var transients = ServiceResolver.CurrentTransientContext;
       ServiceResolver.CurrentTransientContext = null;
 
@@ -164,10 +165,10 @@ namespace FTFoundation.Core
 
     private static void OnSceneUnloaded(Scene scene)
     {
-      ServiceResolver.CleanupScoped(scene.buildIndex);
+      ServiceResolver.CleanupScoped(scene.handle);
     }
 
-    internal static void InjectDependencies(object obj, int sceneIndex, ServiceTargetData target)
+    internal static void InjectDependencies(object obj, int sceneHandle, ServiceTargetData target)
     {
       if (obj == null) throw new ArgumentNullException(nameof(obj));
 
@@ -175,7 +176,7 @@ namespace FTFoundation.Core
 
       if (ServiceCompiler.TryGetInjectionAction(type, out var injectionAction))
       {
-        injectionAction(obj, sceneIndex, target);
+        injectionAction(obj, sceneHandle, target);
       }
     }
 
