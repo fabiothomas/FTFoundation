@@ -76,5 +76,21 @@ namespace FTFoundation.BuildInServices
             compontent = element.AddComponent<T>();
             return element;
         }
+
+        public GameObject ConstructFromPrefab(GameObject prefab, Position pos, string? name = null, GameObject? parent = null)
+        {
+            GameObject instance = Object.Instantiate(prefab, parent ? parent.transform : This.transform);
+            if (name != null) instance.name = name;
+            pos.SetTransform(instance.transform);
+            return instance;
+        }
+
+        public GameObject ConstructFromPrefab<T>(GameObject prefab, Position pos, out T compontent, string? name = null, GameObject? parent = null) where T : Component
+        {
+            GameObject instance = ConstructFromPrefab(prefab, pos, name, parent);
+            if (!instance.TryGetComponent(out compontent))
+                throw new UnityException($"Prefab '{prefab.name}' does not have a component of type '{typeof(T).Name}'.");
+            return instance;
+        }
     }
 }

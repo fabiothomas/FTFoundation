@@ -60,5 +60,28 @@ namespace FTFoundation.BuildInReferences
         /// <param name="parent">The parent game object. If null, the dedicated game object will be used as the parent.</param>
         /// <returns>The newly created UI element.</returns>
         public GameObject ConstructCanvasObject<T>(UIPosition pos, string name, out T compontent, GameObject? parent = null) where T : Component;
+
+        /// <summary>
+        /// Instantiate a prefab under this service's dedicated game object.
+        /// </summary>
+        /// <param name="prefab">The prefab to instantiate. The caller is responsible for obtaining this reference (e.g. via a serialized field, Resources.Load, or Addressables).</param>
+        /// <param name="pos">The position and rotation for the instantiated prefab.</param>
+        /// <param name="name">The name to give the instantiated game object. If null, the prefab's instantiated name is kept.</param>
+        /// <param name="parent">The parent game object. If null, the dedicated game object will be used as the parent.</param>
+        /// <returns>The instantiated game object.</returns>
+        public GameObject ConstructFromPrefab(GameObject prefab, Position pos, string? name = null, GameObject? parent = null);
+
+        /// <summary>
+        /// Instantiate a prefab under this service's dedicated game object and retrieve a component from it.
+        /// </summary>
+        /// <typeparam name="T">The type of component to retrieve from the instantiated prefab.</typeparam>
+        /// <param name="prefab">The prefab to instantiate. The caller is responsible for obtaining this reference (e.g. via a serialized field, Resources.Load, or Addressables).</param>
+        /// <param name="pos">The position and rotation for the instantiated prefab.</param>
+        /// <param name="compontent">The retrieved component of type T.</param>
+        /// <param name="name">The name to give the instantiated game object. If null, the prefab's instantiated name is kept.</param>
+        /// <param name="parent">The parent game object. If null, the dedicated game object will be used as the parent.</param>
+        /// <returns>The instantiated game object.</returns>
+        /// <exception cref="UnityException">Thrown if the instantiated prefab does not have a component of type T.</exception>
+        public GameObject ConstructFromPrefab<T>(GameObject prefab, Position pos, out T compontent, string? name = null, GameObject? parent = null) where T : Component;
     }
 }
