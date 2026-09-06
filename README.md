@@ -123,7 +123,17 @@ void Inject(ILoggerService logger, IEventService events)
 }
 ```
 
-Method parameters are never optional. Both property injection and method injection can be used simultaneously on the same class.
+A parameter is optional if it declares a default value:
+
+```csharp
+void Inject(ILoggerService logger, IAnalyticsService? analytics = null)
+{
+    _logger = logger;
+    _analytics = analytics; // null if IAnalyticsService isn't registered
+}
+```
+
+As with `[Inject(Optional = true)]`, the parameter must be able to hold a null reference. Parameters without a default value are required, same as before. Both property injection and method injection can be used simultaneously on the same class.
 
 ### Multi-Service Injection
 

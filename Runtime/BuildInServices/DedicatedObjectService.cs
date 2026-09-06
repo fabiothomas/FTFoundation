@@ -1,4 +1,3 @@
-#nullable enable
 using FTFoundation.BuildInReferences;
 using FTFoundation.Core;
 using UnityEngine;

@@ -1,0 +1,18 @@
+{
+    "name": "FTFoundation.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:d2a432432777b944b81b72b771d83d53"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -130,7 +129,8 @@ namespace FTFoundation.Core
             {
                 var parameters = injectMethod.GetParameters();
 
-                // create all injection parameters; method parameters are never optional
+                // A parameter is optional if it declares a default value (e.g. "IFoo? foo = null");
+                // a missing/unregistered service then resolves to null instead of throwing.
                 var args = parameters.Select(p =>
                   Expression.Convert(
                     Expression.Call(
@@ -142,7 +142,7 @@ namespace FTFoundation.Core
                 Expression.Constant(p.ParameterType),
                 sceneHandleParameter,
                 serviceTargetDataParameter,
-                Expression.Constant(false)
+                Expression.Constant(p.HasDefaultValue)
                       }
                     ),
                     p.ParameterType
