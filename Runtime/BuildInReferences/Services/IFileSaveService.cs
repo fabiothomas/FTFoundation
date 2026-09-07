@@ -14,7 +14,7 @@ namespace FTFoundation.BuildInReferences
         /// <summary>
         /// Returns the serialized value for the given id, or null if not found.
         /// </summary>
-        string Get(string id);
+        string? Get(string id);
 
         /// <summary>
         /// Immediately persists all dirty data to disk.

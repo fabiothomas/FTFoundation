@@ -173,12 +173,12 @@ Restrict a service to specific build profiles using `[ServiceBuildProfile]`:
 
 ```csharp
 [ServiceBuildProfile(BuildTargetProfile.Editor | BuildTargetProfile.Development)]
-[Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
-public class ScreenLoggerService : ILoggerService { ... }
+[Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+public class ScreenLoggerService : ILoggerSink { ... }
 
 [ServiceBuildProfile(BuildTargetProfile.Production | BuildTargetProfile.Staging)]
-[Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
-public class FileLoggerService : ILoggerService { ... }
+[Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+public class FileLoggerService : ILoggerSink { ... }
 ```
 
 Services without `[ServiceBuildProfile]` are active in all profiles.
@@ -191,8 +191,8 @@ Restrict a service to specific runtime platforms using `[ServiceBuildPlatform]`:
 
 ```csharp
 [ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
-[Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
-public class ConsoleLoggerService : ILoggerService { ... }
+[Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+public class ConsoleLoggerService : ILoggerSink { ... }
 ```
 
 Group flags (`Desktop`, `Mobile`, `Console`, `Web`) and specific flags (`Windows`, `macOS`, `Android`, `iOS`, etc.) are both supported.
@@ -203,8 +203,8 @@ When multiple implementations pass the profile and platform filters, `[ServicePr
 
 ```csharp
 [ServicePriority(10)]
-[Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
-public class ConsoleLoggerService : ILoggerService { ... }
+[Service(typeof(IAnalyticsService), ServiceType.SINGLETON)]
+public class FirebaseAnalyticsService : IAnalyticsService { ... }
 ```
 
 All matching implementations are always included when injecting `IReadOnlyList<T>`.
@@ -215,13 +215,10 @@ All matching implementations are always included when injecting `IReadOnlyList<T
 
 ```csharp
 [ServiceFallback]
-[Service(typeof(ILoggerService), ServiceType.SINGLETON)]
-public class NullLoggerService : ILoggerService
+[Service(typeof(IAnalyticsService), ServiceType.SINGLETON)]
+public class NullAnalyticsService : IAnalyticsService
 {
-    public bool Disabled { get; set; }
-    public void Log(string message) { }
-    public void LogWarning(string message) { }
-    public void LogError(string message) { }
+    public void TrackEvent(string name) { } // no-op when no real analytics provider is configured
 }
 ```
 
@@ -323,7 +320,7 @@ FTFoundation ships with a set of ready-to-use services behind stable interfaces.
 
 | Interface                 | Description                                                                                                                                                                                                                               |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ILoggerService`          | Structured logging with build-profile-aware implementations (console, screen overlay, file).                                                                                                                                              |
+| `ILoggerService`          | Facade that fans a log call out to every currently-active `ILoggerSink` (console, screen overlay, file, or your own). Implement `ILoggerSink` to add a new logging destination — no changes to `ILoggerService` consumers needed.        |
 | `IEventService`           | Typed pub/sub event bus. Events are plain types implementing `IEvent`; subscribers and publishers are matched by event type, so new events need no central registry.                                                                     |
 | `ILifetimeService`        | Subscribe to Unity's `Update`, `FixedUpdate`, and `LateUpdate` loops from plain C# classes. Returns an `IDisposable` to unsubscribe.                                                                                                      |
 | `IReferenceService`       | Global registry holding at most one active `MonoBehaviour` instance per type, reachable from anywhere in the application.                                                                                                                 |

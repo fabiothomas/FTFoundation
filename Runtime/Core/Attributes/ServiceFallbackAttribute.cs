@@ -10,12 +10,10 @@ namespace FTFoundation.Core
     /// </summary>
     /// <example>
     /// [ServiceFallback]
-    /// [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
-    /// public class NullLoggerService : ILoggerService
+    /// [Service(typeof(IAnalyticsService), ServiceType.SINGLETON)]
+    /// public class NullAnalyticsService : IAnalyticsService
     /// {
-    ///     public void Log(string message) { }
-    ///     public void LogWarning(string message) { }
-    ///     public void LogError(string message) { }
+    ///     public void TrackEvent(string name) { } // no-op when no real analytics provider is configured
     /// }
     /// </example>
     [AttributeUsage(AttributeTargets.Class)]

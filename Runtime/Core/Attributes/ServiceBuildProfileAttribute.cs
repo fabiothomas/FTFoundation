@@ -9,8 +9,8 @@ namespace FTFoundation.Core
     /// <example>
     /// // Only active in Development builds and in the Editor
     /// [ServiceBuildProfile(BuildTargetProfile.Development | BuildTargetProfile.Editor)]
-    /// [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
-    /// public class ScreenLogger : ILoggerService { ... }
+    /// [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+    /// public class ScreenLogger : ILoggerSink { ... }
     /// </example>
     [AttributeUsage(AttributeTargets.Class)]
     public sealed class ServiceBuildProfileAttribute : Attribute
