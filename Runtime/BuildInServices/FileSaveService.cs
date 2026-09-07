@@ -15,8 +15,12 @@ namespace FTFoundation.BuildInServices
     {
         private const string SavePath = "savedata/save.dat";
         private const float FlushInterval = 5f;
-        // Passphrase used to derive the AES key. Prevents casual file editing.
-        private const string Passphrase = "FTFoundation_SaveData_v1";
+
+        // Passphrase used to derive the AES key. This only deters casual file editing, not a
+        // determined attacker — anyone can decompile a shipped build and read this default.
+        // Override it per-project via appsettings.local.json (gitignored) if you need every
+        // project using this package to not share the identical built-in key.
+        [Config] private string Passphrase { get; set; } = "FTFoundation_SaveData_v1";
 
         private IFileService _fileService = null!;
         private readonly Dictionary<string, string> _data = new();
@@ -30,6 +34,7 @@ namespace FTFoundation.BuildInServices
             Load();
             _updateSubscription = lifetimeService.OnUpdate(OnUpdate);
             Application.quitting += OnApplicationQuit;
+            Application.focusChanged += OnApplicationFocusChanged;
         }
 
         public void Set(string id, string serializedValue)
@@ -66,6 +71,13 @@ namespace FTFoundation.BuildInServices
         private void OnApplicationQuit()
         {
             Flush();
+        }
+
+        // Application.quitting isn't reliably raised on mobile before the OS suspends or kills a
+        // backgrounded app, so flush on any focus loss too (alt-tab, backgrounding, screen lock).
+        private void OnApplicationFocusChanged(bool hasFocus)
+        {
+            if (!hasFocus) Flush();
         }
 
         private void Load()
@@ -121,13 +133,13 @@ namespace FTFoundation.BuildInServices
         // Key  = SHA-256 of the passphrase bytes (32 bytes → AES-256)
         // IV   = random 16 bytes, prepended to the ciphertext before Base64 encoding
 
-        private static byte[] DeriveKey()
+        private byte[] DeriveKey()
         {
             using var sha = SHA256.Create();
             return sha.ComputeHash(Encoding.UTF8.GetBytes(Passphrase));
         }
 
-        private static string Encrypt(string plaintext)
+        private string Encrypt(string plaintext)
         {
             byte[] key = DeriveKey();
             using var aes = Aes.Create();
@@ -143,7 +155,7 @@ namespace FTFoundation.BuildInServices
             return Convert.ToBase64String(ms.ToArray());
         }
 
-        private static string Decrypt(string cipherBase64)
+        private string Decrypt(string cipherBase64)
         {
             byte[] key = DeriveKey();
             byte[] allBytes = Convert.FromBase64String(cipherBase64);
