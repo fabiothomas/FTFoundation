@@ -10,15 +10,15 @@ namespace FTFoundation.BuildInServices
     // reflection-based injection only sees inherited protected/public members, not private ones.
     public abstract class PrefixedLoggerService : ILoggerSink
     {
-        [Config] protected string MonoColor { get; set; } = null!;
-        [Config] protected string SystemColor { get; set; } = null!;
-        [Config] protected string SingletonColor { get; set; } = null!;
-        [Config] protected string ScopedColor { get; set; } = null!;
-        [Config] protected string FoundationColor { get; set; } = null!;
-        [Config] protected string DefaultColor { get; set; } = null!;
-        [Config] protected string LogColor { get; set; } = null!;
-        [Config] protected string WarningColor { get; set; } = null!;
-        [Config] protected string ErrorColor { get; set; } = null!;
+        [Config] protected string MonoColor { get; set; }
+        [Config] protected string SystemColor { get; set; }
+        [Config] protected string SingletonColor { get; set; }
+        [Config] protected string ScopedColor { get; set; }
+        [Config] protected string FoundationColor { get; set; }
+        [Config] protected string DefaultColor { get; set; }
+        [Config] protected string LogColor { get; set; }
+        [Config] protected string WarningColor { get; set; }
+        [Config] protected string ErrorColor { get; set; }
 
         private string prefix = null!;
 

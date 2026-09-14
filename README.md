@@ -102,8 +102,10 @@ In the header of this view you can select a profile and platform to get the accu
 Mark a **private** property with `[Inject]`:
 
 ```csharp
-[Inject] private ILoggerService Logger { get; set; } = null!;
+[Inject] private ILoggerService Logger { get; set; }
 ```
+
+No `= null!;` needed — the bundled analyzer (see [IDE warnings](#method-injection)) suppresses `CS8618` for `[Inject]`/`[Config]` properties, since the framework always populates them via reflection before any other code runs.
 
 Use `Optional = true` for dependencies that may not be registered. The property will be `null` if the service is absent:
 
@@ -135,6 +137,12 @@ void Inject(ILoggerService logger, IAnalyticsService? analytics = null)
 
 As with `[Inject(Optional = true)]`, the parameter must be able to hold a null reference. Parameters without a default value are required, same as before. Both property injection and method injection can be used simultaneously on the same class.
 
+> **IDE warnings:** since `Inject()` is only ever called via reflection, and `[Inject]`/`[Config]` properties are only ever assigned via reflection, the compiler can't see either — IDE "unused private member" inspections (e.g. Roslyn's `IDE0051`) flag `Inject()` methods as dead code, and `CS8618` ("non-nullable property must contain a non-null value") flags `[Inject]`/`[Config]` properties as uninitialized, which is why older code in this repo used to carry `= null!;` on every one of them. The package ships a Roslyn analyzer (`Runtime/Analyzers/FTFoundation.Analyzers.dll`) that suppresses both false positives — `IDE0051` for any non-public, non-static method named exactly `Inject`, and `CS8618` for any property carrying `[Inject]` or `[Config]` — so neither the boilerplate default value nor a suppressed warning is needed. Its source lives in `Runtime/Analyzers~/` (a `~`-suffixed folder, invisible to Unity) — rebuild it with `dotnet build -c Release Runtime/Analyzers~/FTFoundation.Analyzers.csproj` and copy the output from `bin/Release/netstandard2.0/FTFoundation.Analyzers.dll` over the one in `Runtime/Analyzers/`.
+>
+> **Placement matters for scope:** Unity applies a `RoslynAnalyzer`-labeled DLL only to the assembly whose folder (the one containing its `.asmdef`) it lives under, plus any assembly that references that one. The DLL lives under `Runtime/` (`FTFoundation.asmdef`'s folder) specifically so its scope covers every assembly that references `FTFoundation` — which, by construction, is every assembly that could ever declare an `Inject()` method or an `[Inject]`/`[Config]` property. Don't move it under `Editor/`; that would scope it to `FTFoundation.Editor` alone, which nothing else references.
+>
+> **Do not bump `Microsoft.CodeAnalysis.CSharp` past 3.8** in that `.csproj` — Unity's own bundled Roslyn only supports analyzers built against 3.8, and a newer version compiles fine but fails to load in Unity ("Unable to resolve reference 'Microsoft.CodeAnalysis'..."). After rebuilding, the DLL's import settings need: the `RoslynAnalyzer` label, "Any Platform" and "Editor" both unchecked (it's compile-time tooling, not a runtime dependency), and "Validate References" unchecked (Unity's static plugin-reference checker can't see the Roslyn assemblies the compiler host loads internally, so it will otherwise report the same false error even though the version is correct).
+
 ### Multi-Service Injection
 
 Inject all active implementations of an interface by requesting `IReadOnlyList<T>`, `IEnumerable<T>`, or `List<T>`:
@@ -155,7 +163,7 @@ Call `ServiceProvider.Inject(this)` in `Awake()`:
 ```csharp
 public class PlayerController : MonoBehaviour
 {
-    [Inject] private IInputService Input { get; set; } = null!;
+    [Inject] private IInputService Input { get; set; }
 
     void Awake() => ServiceProvider.Inject(this);
 }
@@ -272,7 +280,7 @@ MyNetworkService      →  "myNetwork"
 Mark a **private** property with `[Config]` to have it populated from the merged config before `[Inject]` properties and the `Inject()` method are processed:
 
 ```csharp
-[Config] private string ApiEndpoint { get; set; } = null!;
+[Config] private string ApiEndpoint { get; set; }
 [Config] private int Timeout { get; set; }
 ```
 

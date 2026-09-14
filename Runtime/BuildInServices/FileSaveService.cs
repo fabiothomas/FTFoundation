@@ -20,7 +20,7 @@ namespace FTFoundation.BuildInServices
         // determined attacker — anyone can decompile a shipped build and read this default.
         // Override it per-project via appsettings.local.json (gitignored) if you need every
         // project using this package to not share the identical built-in key.
-        [Config(Required = true)] private string Passphrase { get; set; } = null!;
+        [Config(Required = true)] private string Passphrase { get; set; }
 
         private IFileService _fileService = null!;
         private readonly Dictionary<string, string> _data = new();

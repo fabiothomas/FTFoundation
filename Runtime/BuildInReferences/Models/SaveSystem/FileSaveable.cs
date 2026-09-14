@@ -29,7 +29,7 @@ namespace FTFoundation.BuildInReferences
 
         public override void Restore()
         {
-            string serialized = _saveService.Get(Id);
+            string? serialized = _saveService.Get(Id);
             if (serialized == null) return;
             Value = Deserialize(serialized);
             IsDirty = false;
@@ -52,7 +52,10 @@ namespace FTFoundation.BuildInReferences
             else if (typeof(T) == typeof(int)) result = int.Parse(raw);
             else if (typeof(T) == typeof(float)) result = float.Parse(raw, System.Globalization.CultureInfo.InvariantCulture);
             else if (typeof(T) == typeof(bool)) result = raw == "1";
-            else result = JsonUtility.FromJson<T>(raw);
+            // T is unconstrained, so the compiler can't prove a reference-typed T won't come back
+            // null here; FileSaveable only ever round-trips data it serialized itself, so a null
+            // result would mean corrupted save data, not an expected outcome worth modeling as T?.
+            else result = JsonUtility.FromJson<T>(raw)!;
             return (T)result;
         }
     }

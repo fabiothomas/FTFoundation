@@ -9,7 +9,7 @@ namespace FTFoundation.BuildInServices
     [ServicePriority(0)]
     public class ScreenLoggerService : PrefixedLoggerService
     {
-        [Inject] private IDebugScreenService DebugScreen { get; set; } = null!;
+        [Inject] private IDebugScreenService DebugScreen { get; set; }
 
         void Inject(IServiceTargetData targetData) => ApplyPrefix(targetData);
 

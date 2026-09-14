@@ -1,0 +1,5 @@
+# Build output of the analyzer source project (Runtime/Analyzers~) — regenerate with:
+#   dotnet build -c Release Runtime/Analyzers~/FTFoundation.Analyzers.csproj
+# then copy bin/Release/netstandard2.0/FTFoundation.Analyzers.dll into Runtime/Analyzers/.
+Runtime/Analyzers~/bin/
+Runtime/Analyzers~/obj/
