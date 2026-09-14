@@ -37,6 +37,7 @@ namespace FTFoundation.BuildInServices
             return new DelegateDisposable(() => lateUpdateActions.Remove(action));
         }
 
+        [HideInCallstack]
         private void Update()
         {
             foreach (var action in updateActions.ToArray())
@@ -46,6 +47,7 @@ namespace FTFoundation.BuildInServices
             }
         }
 
+        [HideInCallstack]
         private void FixedUpdate()
         {
             foreach (var action in fixedUpdateActions.ToArray())
@@ -55,6 +57,7 @@ namespace FTFoundation.BuildInServices
             }
         }
 
+        [HideInCallstack]
         private void LateUpdate()
         {
             foreach (var action in lateUpdateActions.ToArray())
@@ -72,9 +75,9 @@ namespace FTFoundation.BuildInServices
                 _lifetimeService = lifetimeService;
             }
 
-            void Update() => _lifetimeService.Update();
-            void FixedUpdate() => _lifetimeService.FixedUpdate();
-            void LateUpdate() => _lifetimeService.LateUpdate();
+            [HideInCallstack] void Update() => _lifetimeService.Update();
+            [HideInCallstack] void FixedUpdate() => _lifetimeService.FixedUpdate();
+            [HideInCallstack] void LateUpdate() => _lifetimeService.LateUpdate();
         }
     }
 }

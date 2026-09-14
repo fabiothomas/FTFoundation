@@ -11,6 +11,7 @@ namespace FTFoundation.BuildInServices
   [ServiceBuildProfile(BuildTargetProfile.Production | BuildTargetProfile.Staging | BuildTargetProfile.Editor)]
   [ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
   [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+  [ServicePriority(1)]
   public class FileLoggerService : ILoggerSink
   {
     private const string LogPath = "logs/session.log";

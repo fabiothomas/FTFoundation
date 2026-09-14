@@ -6,6 +6,7 @@ namespace FTFoundation.BuildInServices
 
     [ServiceBuildProfile(BuildTargetProfile.Editor | BuildTargetProfile.Development)]
     [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+    [ServicePriority(0)]
     public class ScreenLoggerService : PrefixedLoggerService
     {
         [Inject] private IDebugScreenService DebugScreen { get; set; } = null!;

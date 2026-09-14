@@ -12,7 +12,7 @@ namespace FTFoundation.Core
         /// <summary>
         /// When true, a missing config value throws an error at startup instead of being silently skipped.
         /// </summary>
-        public bool Required { get; }
+        public bool Required { get; set; }
 
         public ConfigAttribute(bool required = false)
         {

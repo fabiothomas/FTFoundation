@@ -8,6 +8,7 @@ namespace FTFoundation.BuildInServices
   [ServiceBuildProfile(BuildTargetProfile.Editor)]
   [ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
   [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+  [ServicePriority(2)]
   public class ConsoleLoggerService : PrefixedLoggerService
   {
     void Inject(IServiceTargetData targetData) => ApplyPrefix(targetData);
