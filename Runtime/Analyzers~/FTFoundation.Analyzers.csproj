@@ -5,6 +5,10 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <!-- RS2008 wants a Shipped/Unshipped release-tracking file pair, which is meant for analyzers
+         published independently on NuGet with their own release cadence. This one ships bundled
+         with FTFoundation's own versioning instead, so that convention doesn't apply here. -->
+    <NoWarn>$(NoWarn);RS2008</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

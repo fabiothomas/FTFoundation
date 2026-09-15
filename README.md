@@ -141,6 +141,14 @@ As with `[Inject(Optional = true)]`, the parameter must be able to hold a null r
 >
 > **Placement matters for scope:** Unity applies a `RoslynAnalyzer`-labeled DLL only to the assembly whose folder (the one containing its `.asmdef`) it lives under, plus any assembly that references that one. The DLL lives under `Runtime/` (`FTFoundation.asmdef`'s folder) specifically so its scope covers every assembly that references `FTFoundation` — which, by construction, is every assembly that could ever declare an `Inject()` method or an `[Inject]`/`[Config]` property. Don't move it under `Editor/`; that would scope it to `FTFoundation.Editor` alone, which nothing else references.
 >
+> **It also catches four real mistakes at compile time**, all of which otherwise compile fine and only fail once the container actually resolves the service:
+> - `FTF0001` — a class declares more than one non-public instance method named `Inject`. `Type.GetMethod("Inject", ...)` matches by name alone, so this throws `AmbiguousMatchException` at startup regardless of the methods having different parameter lists.
+> - `FTF0002` — a property carries `[Inject]` or `[Config]` but has no setter. `PropertyInfo.SetValue` needs one; a get-only property throws at injection time.
+> - `FTF0003` — a class is registered with `[Service(typeof(TInterface), ...)]` but doesn't actually implement `TInterface` (directly or via a base class).
+> - `FTF0004` — a `[Service]`-decorated class is abstract, or has no accessible public parameterless constructor. `ServiceCompiler.PrecompileFactory` builds every instance with `Expression.New(type)`, which requires exactly that.
+>
+> All four are reported as warnings, not errors, so they won't block your build.
+>
 > **Do not bump `Microsoft.CodeAnalysis.CSharp` past 3.8** in that `.csproj` — Unity's own bundled Roslyn only supports analyzers built against 3.8, and a newer version compiles fine but fails to load in Unity ("Unable to resolve reference 'Microsoft.CodeAnalysis'..."). After rebuilding, the DLL's import settings need: the `RoslynAnalyzer` label, "Any Platform" and "Editor" both unchecked (it's compile-time tooling, not a runtime dependency), and "Validate References" unchecked (Unity's static plugin-reference checker can't see the Roslyn assemblies the compiler host loads internally, so it will otherwise report the same false error even though the version is correct).
 
 ### Multi-Service Injection
