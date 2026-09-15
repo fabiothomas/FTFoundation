@@ -10,6 +10,13 @@
         "com.unity.inputsystem": "1.19.0",
         "com.unity.ugui": "2.0.0"
     },
+    "samples": [
+        {
+            "displayName": "Getting Started",
+            "description": "A minimal walkthrough: defining a custom service and injecting it via property and method injection into both plain C# classes and a MonoBehaviour.",
+            "path": "Samples~/GettingStarted"
+        }
+    ],
     "keywords": [
         "unity",
         "dependency",
