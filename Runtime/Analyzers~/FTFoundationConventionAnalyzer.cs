@@ -97,7 +97,7 @@ namespace FTFoundation.Analyzers
         }
       }
 
-      // FTF0004: the class must be instantiable via Expression.New(type) — concrete, with a public parameterless constructor.
+      // FTF0004: the class must be instantiable via Expression.New(type), concrete, with a public parameterless constructor.
       if (type.IsAbstract)
       {
         context.ReportDiagnostic(Diagnostic.Create(MissingParameterlessConstructorRule, location, type.Name, "is abstract and cannot be instantiated"));
