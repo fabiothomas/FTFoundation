@@ -10,7 +10,7 @@ namespace FTFoundation.Core
 {
   public static class ServiceProvider
   {
-    // Single-winner service resolution: interface → winning concrete type
+    // Single-winner service resolution: interface -> winning concrete type
     internal static readonly Dictionary<Type, Type> serviceCache = new();
 
     // All profile-matched concrete types per interface, ordered by priority (for IReadOnlyList<T> injection)
@@ -19,7 +19,7 @@ namespace FTFoundation.Core
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
     private static void InitializeServiceProvider()
     {
-      // resetting static values in case of 'domain reloading' being disabled
+      // Resetting static values in case of 'domain reloading' being disabled
       serviceCache.Clear();
       multiServiceCache.Clear();
       ServiceResolver.Clear();
@@ -102,10 +102,6 @@ namespace FTFoundation.Core
       }
 
       // ── Eagerly instantiate startup singletons ────────────────────────────────────────────
-      // Routed through ServiceResolver.GetService (the same path lazy singletons use) so there is
-      // exactly one construction path per interface. This also means a cycle between two eager
-      // startups is caught by the resolution-stack guard in ServiceResolver instead of causing a
-      // duplicate instance to be constructed and the original silently evicted from serviceCache.
       foreach (var t in resolved.EagerStartups)
       {
         ServiceAttribute attribute = (ServiceAttribute)t.GetCustomAttribute(typeof(ServiceAttribute), inherit: true);
@@ -150,10 +146,18 @@ namespace FTFoundation.Core
     {
       ServiceTargetData target = new(instance.name, ServiceTargetDataType.MONOBEHAVIOUR, instance.GetType(), instance);
 
-      ServiceResolver.CurrentTransientContext = new System.Collections.Generic.List<object>();
-      InjectDependencies(instance, instance.gameObject.scene.handle, target);
-      var transients = ServiceResolver.CurrentTransientContext;
-      ServiceResolver.CurrentTransientContext = null;
+      ServiceResolver.CurrentTransientContext = new List<object>();
+      List<object> transients;
+      try
+      {
+        InjectDependencies(instance, instance.gameObject.scene.handle, target);
+      }
+      finally
+      {
+        // Must run even if InjectDependencies threw
+        transients = ServiceResolver.CurrentTransientContext;
+        ServiceResolver.CurrentTransientContext = null;
+      }
 
       if (transients.Count > 0)
       {
@@ -181,25 +185,42 @@ namespace FTFoundation.Core
 
     internal static void FlushProblems(List<ProblemDetail> problems)
     {
-      IReadOnlyList<ILoggerService>? loggers = ServiceResolver.GetService(typeof(IReadOnlyList<ILoggerService>), -1, ServiceTargetData.FoundationServiceTargetData(), optional: true) as IReadOnlyList<ILoggerService>;
+      IReadOnlyList<ILoggerService>? loggers;
+      try
+      {
+        loggers = ServiceResolver.GetService(typeof(IReadOnlyList<ILoggerService>), -1, ServiceTargetData.FoundationServiceTargetData(), optional: true) as IReadOnlyList<ILoggerService>;
+      }
+      catch (Exception e)
+      {
+        Debug.LogError($"[FTFoundation] Failed to resolve ILoggerService while flushing startup diagnostics; falling back to Debug.Log: {e.Message}");
+        loggers = null;
+      }
 
       foreach (var problem in problems)
       {
-        foreach (var logger in loggers ?? Array.Empty<ILoggerService>())
+        if (loggers == null || loggers.Count == 0)
+        {
+          switch (problem.ProblemDetailType)
+          {
+            case ProblemDetailType.INFORMATION: Debug.Log(problem.Message); break;
+            case ProblemDetailType.WARNING: Debug.LogWarning(problem.Message); break;
+            case ProblemDetailType.ERROR: Debug.LogError(problem.Message); break;
+          }
+          continue;
+        }
+
+        foreach (var logger in loggers)
         {
           switch (problem.ProblemDetailType)
           {
             case ProblemDetailType.INFORMATION:
-              if (logger != null) logger.Log(problem.Message);
-              else Debug.Log(problem.Message);
+              logger.Log(problem.Message);
               break;
             case ProblemDetailType.WARNING:
-              if (logger != null) logger.LogWarning(problem.Message);
-              else Debug.LogWarning(problem.Message);
+              logger.LogWarning(problem.Message);
               break;
             case ProblemDetailType.ERROR:
-              if (logger != null) logger.LogError(problem.Message);
-              else Debug.LogError(problem.Message);
+              logger.LogError(problem.Message);
               break;
           }
         }

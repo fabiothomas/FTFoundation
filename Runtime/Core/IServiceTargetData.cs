@@ -2,21 +2,21 @@ using System;
 
 namespace FTFoundation.Core
 {
-    public interface IServiceTargetData
-    {
-        public string Name { get; }
-        public ServiceTargetDataType DataType { get; }
-        public Type? ObjectType { get; }
-        public object? Reference { get; }
-    }
+  public interface IServiceTargetData
+  {
+    public string Name { get; }
+    public ServiceTargetDataType DataType { get; }
+    public Type? ObjectType { get; }
+    public object? Reference { get; }
+  }
 
-    public enum ServiceTargetDataType
-    {
-        NONE = 0,
-        MONOBEHAVIOUR = 1,
-        SYSTEM = 2,
-        SINGLETON = 3,
-        SCOPED = 4,
-        FT_FOUNDATION = 5
-    }
+  public enum ServiceTargetDataType
+  {
+    NONE = 0,
+    MONOBEHAVIOUR = 1,
+    SYSTEM = 2,
+    SINGLETON = 3,
+    SCOPED = 4,
+    FT_FOUNDATION = 5
+  }
 }

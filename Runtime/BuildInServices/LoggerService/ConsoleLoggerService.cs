@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace FTFoundation.BuildInServices
 {
-
   [ServiceBuildProfile(BuildTargetProfile.Editor)]
   [ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
   [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]

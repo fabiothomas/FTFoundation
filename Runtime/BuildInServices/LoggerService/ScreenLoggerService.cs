@@ -3,29 +3,28 @@ using FTFoundation.BuildInReferences;
 
 namespace FTFoundation.BuildInServices
 {
+  [ServiceBuildProfile(BuildTargetProfile.Editor | BuildTargetProfile.Development)]
+  [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+  [ServicePriority(0)]
+  public class ScreenLoggerService : PrefixedLoggerService
+  {
+    [Inject] private IDebugScreenService DebugScreen { get; set; }
 
-    [ServiceBuildProfile(BuildTargetProfile.Editor | BuildTargetProfile.Development)]
-    [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
-    [ServicePriority(0)]
-    public class ScreenLoggerService : PrefixedLoggerService
+    void Inject(IServiceTargetData targetData) => ApplyPrefix(targetData);
+
+    public override void Log(string message)
     {
-        [Inject] private IDebugScreenService DebugScreen { get; set; }
-
-        void Inject(IServiceTargetData targetData) => ApplyPrefix(targetData);
-
-        public override void Log(string message)
-        {
-            DebugScreen.Print(FormatMessage(message, LogColor));
-        }
-
-        public override void LogWarning(string message)
-        {
-            DebugScreen.Print(FormatMessage(message, WarningColor));
-        }
-
-        public override void LogError(string message)
-        {
-            DebugScreen.Print(FormatMessage(message, ErrorColor));
-        }
+      DebugScreen.Print(FormatMessage(message, LogColor));
     }
+
+    public override void LogWarning(string message)
+    {
+      DebugScreen.Print(FormatMessage(message, WarningColor));
+    }
+
+    public override void LogError(string message)
+    {
+      DebugScreen.Print(FormatMessage(message, ErrorColor));
+    }
+  }
 }
