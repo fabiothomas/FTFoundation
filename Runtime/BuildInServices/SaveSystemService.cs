@@ -10,21 +10,18 @@ namespace FTFoundation.BuildInServices
   public partial class SaveSystemService : ISaveSystemService
   {
     private readonly Dictionary<string, ISaveable> saveables = new();
-    private IFileSaveService? _fileSaveService;
-    private ILoggerService _loggerService = null!;
+    [Inject(Optional = true)] IFileSaveService? FileSaveService { get; set; }
+    [Inject] ILoggerService LoggerService { get; set; }
 
-    void Inject(IReadOnlyList<ISaveSystemConfiguration> configurations, IDebugScreenService debugScreenService, ILoggerService loggerService, IFileSaveService? fileSaveService = null)
+    void Inject(IReadOnlyList<ISaveSystemConfiguration> configurations, IDebugScreenService debugScreenService)
     {
-      _fileSaveService = fileSaveService;
-      _loggerService = loggerService;
-
       foreach (ISaveSystemConfiguration config in configurations)
       {
         foreach (ISaveable saveable in config.Saveables)
         {
           if (saveables.ContainsKey(saveable.Id))
           {
-            loggerService.LogWarning($"[SaveSystemService] Warning: Duplicate saveable ID '{saveable.Id}' found. Skipping.");
+            LoggerService.LogWarning($"[SaveSystemService] Warning: Duplicate saveable ID '{saveable.Id}' found. Skipping.");
             continue;
           }
           saveables[saveable.Id] = saveable;
@@ -48,7 +45,7 @@ namespace FTFoundation.BuildInServices
     public void SaveAll()
     {
       saveables.Values.ToList().ForEach(saveable => saveable.Save());
-      _fileSaveService?.Flush();
+      FileSaveService?.Flush();
     }
 
     public void Restore()
@@ -61,7 +58,7 @@ namespace FTFoundation.BuildInServices
         }
         catch (System.Exception e)
         {
-          _loggerService.LogWarning($"[SaveSystemService] Failed to restore saveable '{saveable.Id}': {e.Message}");
+          LoggerService.LogWarning($"[SaveSystemService] Failed to restore saveable '{saveable.Id}': {e.Message}");
         }
       }
     }

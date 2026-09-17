@@ -20,15 +20,14 @@ namespace FTFoundation.BuildInServices
     // determined attacker. Anyone can decompile a shipped build and read this default.
     [Config(Required = true)] private string Passphrase { get; set; }
 
-    private IFileService _fileService = null!;
+    [Inject] private IFileService FileService { get; set; }
     private readonly Dictionary<string, string> _data = new();
     private bool _isDirty;
     private float _timeSinceLastFlush;
     private IDisposable? _updateSubscription;
 
-    void Inject(IFileService fileService, ILifetimeService lifetimeService)
+    void Inject(ILifetimeService lifetimeService)
     {
-      _fileService = fileService;
       Load();
       _updateSubscription = lifetimeService.OnUpdate(OnUpdate);
       Application.quitting += OnApplicationQuit;
@@ -60,7 +59,7 @@ namespace FTFoundation.BuildInServices
 
       string json = SerializeDict(_data);
       string encrypted = Encrypt(json);
-      _fileService.Write(SavePath, encrypted);
+      FileService.Write(SavePath, encrypted);
       _isDirty = false;
       _timeSinceLastFlush = 0f;
     }
@@ -86,7 +85,7 @@ namespace FTFoundation.BuildInServices
 
     private void Load()
     {
-      if (!_fileService.TryRead(SavePath, out string encrypted)) return;
+      if (!FileService.TryRead(SavePath, out string encrypted)) return;
 
       try
       {

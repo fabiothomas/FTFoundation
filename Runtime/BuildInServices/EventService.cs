@@ -10,25 +10,23 @@ namespace FTFoundation.BuildInServices
   {
     private readonly Dictionary<Type, Delegate> handlers = new();
 
-    ILoggerService _loggerService = null!;
+    [Inject] private ILoggerService LoggerService { get; set; }
 
-    void Inject(ILoggerService loggerService)
+    void Inject()
     {
-      _loggerService = loggerService;
-
       LogsDisabled = true;
     }
 
     public bool LogsDisabled
     {
-      get => _loggerService.Disabled;
-      set => _loggerService.Disabled = value;
+      get => LoggerService.Disabled;
+      set => LoggerService.Disabled = value;
     }
 
     public IDisposable Subscribe<TEvent>(Action<TEvent> handler) where TEvent : IEvent
     {
       Type key = typeof(TEvent);
-      if (!LogsDisabled) _loggerService.Log($"<i>{key.Name}</i> was subscribed to");
+      if (!LogsDisabled) LoggerService.Log($"<i>{key.Name}</i> was subscribed to");
 
       handlers[key] = handlers.TryGetValue(key, out Delegate existing)
         ? Delegate.Combine(existing, handler)
@@ -40,7 +38,7 @@ namespace FTFoundation.BuildInServices
     public void Invoke<TEvent>(TEvent eventInstance) where TEvent : IEvent
     {
       Type key = typeof(TEvent);
-      if (!LogsDisabled) _loggerService.Log($"<i>{key.Name}</i> was published");
+      if (!LogsDisabled) LoggerService.Log($"<i>{key.Name}</i> was published");
 
       if (handlers.TryGetValue(key, out Delegate existing) && existing is Action<TEvent> action)
         action.Invoke(eventInstance);
@@ -51,7 +49,7 @@ namespace FTFoundation.BuildInServices
       Type key = typeof(TEvent);
       if (!handlers.TryGetValue(key, out Delegate existing)) return;
 
-      if (!LogsDisabled) _loggerService.Log($"<i>{key.Name}</i> was unsubscribed from");
+      if (!LogsDisabled) LoggerService.Log($"<i>{key.Name}</i> was unsubscribed from");
 
       Delegate combined = Delegate.Remove(existing, handler);
       if (combined == null) handlers.Remove(key);

@@ -7,31 +7,26 @@ namespace FTFoundation.BuildInServices
   [Service(typeof(ILoggerService), ServiceType.TRANSIENT)]
   public class LoggerService : ILoggerService
   {
-    private IReadOnlyList<ILoggerSink> _sinks = null!;
+    [Inject] IReadOnlyList<ILoggerSink> LoggerSinks { get; set; }
 
     public bool Disabled { get; set; }
-
-    void Inject(IReadOnlyList<ILoggerSink> sinks)
-    {
-      _sinks = sinks;
-    }
 
     public void Log(string message)
     {
       if (Disabled) return;
-      foreach (var sink in _sinks) sink.Log(message);
+      foreach (var sink in LoggerSinks) sink.Log(message);
     }
 
     public void LogWarning(string message)
     {
       if (Disabled) return;
-      foreach (var sink in _sinks) sink.LogWarning(message);
+      foreach (var sink in LoggerSinks) sink.LogWarning(message);
     }
 
     public void LogError(string message)
     {
       if (Disabled) return;
-      foreach (var sink in _sinks) sink.LogError(message);
+      foreach (var sink in LoggerSinks) sink.LogError(message);
     }
   }
 }

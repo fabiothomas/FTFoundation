@@ -15,12 +15,11 @@ namespace FTFoundation.BuildInServices
   {
     private const string LogPath = "logs/session.log";
 
-    private IFileService _fileService = null!;
+    [Inject] IFileService FileService { get; set; }
     private readonly List<string> _buffer = new();
 
-    void Inject(IFileService fileService)
+    void Inject()
     {
-      _fileService = fileService;
       Application.quitting += OnApplicationQuit;
     }
 
@@ -51,7 +50,7 @@ namespace FTFoundation.BuildInServices
       var sb = new StringBuilder();
       foreach (string line in _buffer)
         sb.AppendLine(line);
-      _fileService.Write(LogPath, sb.ToString());
+      FileService.Write(LogPath, sb.ToString());
     }
 
     private static string FormatLine(string level, string message)
