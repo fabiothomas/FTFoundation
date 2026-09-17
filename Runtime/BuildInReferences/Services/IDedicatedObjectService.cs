@@ -15,8 +15,6 @@ namespace FTFoundation.BuildInReferences
 
     /// <summary>
     /// Turns this dedicated game object into a canvas with a canvas scaler and graphic raycaster.
-    /// Also ensures an <see cref="UnityEngine.EventSystems.EventSystem"/> exists in the scene.
-    /// Without one, the canvas renders but nothing on it responds to pointer input.
     /// </summary>
     /// <param name="canvas">The created canvas component.</param>
     /// <param name="scaler">The created canvas scaler component.</param>

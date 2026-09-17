@@ -5,7 +5,9 @@ using FTFoundation.BuildInReferences;
 using FTFoundation.Core;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace FTFoundation.BuildInServices
@@ -56,6 +58,19 @@ namespace FTFoundation.BuildInServices
       Toggle(false);
 
       lifetimeService.OnUpdate(Update);
+    }
+
+    // A GraphicRaycaster does nothing without an EventSystem to dispatch pointer events through.
+    // An EventSystem is normally added automatically by Unity when you create a Canvas through the GameObject menu.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void EnsureEventSystemExists()
+    {
+      if (EventSystem.current != null) return;
+
+      var eventSystemObject = new GameObject("EventSystem");
+      eventSystemObject.AddComponent<EventSystem>();
+      eventSystemObject.AddComponent<InputSystemUIInputModule>();
+      UnityEngine.Object.DontDestroyOnLoad(eventSystemObject);
     }
 
     #region Construction

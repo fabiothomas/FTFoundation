@@ -1,8 +1,6 @@
 using FTFoundation.BuildInReferences;
 using FTFoundation.Core;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace FTFoundation.BuildInServices
@@ -36,20 +34,6 @@ namespace FTFoundation.BuildInServices
 
       scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
       scaler.referenceResolution = new Vector2(1920, 1080);
-
-      EnsureEventSystemExists();
-    }
-
-    // A GraphicRaycaster does nothing without an EventSystem to dispatch pointer events through.
-    // An EventSystem is normally added automatically by Unity when you create a Canvas through the GameObject menu.
-    private static void EnsureEventSystemExists()
-    {
-      if (EventSystem.current != null) return;
-
-      var eventSystemObject = new GameObject("EventSystem");
-      eventSystemObject.AddComponent<EventSystem>();
-      eventSystemObject.AddComponent<InputSystemUIInputModule>();
-      Object.DontDestroyOnLoad(eventSystemObject);
     }
 
     public GameObject ConstructEmpty(Position pos, string name, GameObject? parent = null)
