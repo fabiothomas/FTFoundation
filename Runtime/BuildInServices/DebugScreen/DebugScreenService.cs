@@ -15,7 +15,7 @@ namespace FTFoundation.BuildInServices
   [Service(typeof(IDebugScreenService), ServiceType.SINGLETON)]
   public class DebugScreenService : IDebugScreenService
   {
-    private IDedicatedObjectService DedicatedObjectService { get; set; } = null!;
+    [Inject] IDedicatedObjectService DedicatedObjectService { get; set; }
     private GameObject DebugScreenObject { get; set; } = null!;
 
     private GameObject Terminal { get; set; } = null!;
@@ -47,10 +47,8 @@ namespace FTFoundation.BuildInServices
     private static readonly float ItemSize = ItemRadius * 2;
     private static readonly float HeaderHeight = ItemSize + (GapSize * 2);
 
-    void Inject(IDedicatedObjectService dedicatedObjectService, ILifetimeService lifetimeService)
+    void Inject(ILifetimeService lifetimeService)
     {
-      DedicatedObjectService = dedicatedObjectService;
-
       panelImage = Resources.Load<Sprite>("square-rounded-512");
       ConstructObject();
 
