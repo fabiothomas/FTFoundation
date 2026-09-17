@@ -11,7 +11,7 @@ namespace FTFoundation.BuildInServices
   [ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
   [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
   [ServicePriority(1)]
-  public class FileLoggerService : ILoggerSink
+  public class FileLoggerService : ILoggerSink, IServiceCleanup
   {
     private const string LogPath = "logs/session.log";
 
@@ -22,6 +22,12 @@ namespace FTFoundation.BuildInServices
     {
       _fileService = fileService;
       Application.quitting += OnApplicationQuit;
+    }
+
+    public void OnCleanup()
+    {
+      Application.quitting -= OnApplicationQuit;
+      OnApplicationQuit(); // flush whatever's still buffered rather than discard it
     }
 
     public void Log(string message)

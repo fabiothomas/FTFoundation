@@ -19,6 +19,9 @@ namespace FTFoundation.Core
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
     private static void InitializeServiceProvider()
     {
+      // Tear down whichever singletons survived from a previous generation before resetting everything below
+      ServiceResolver.CleanupSingletons();
+
       // Resetting static values in case of 'domain reloading' being disabled
       serviceCache.Clear();
       multiServiceCache.Clear();

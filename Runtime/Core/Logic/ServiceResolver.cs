@@ -84,7 +84,25 @@ namespace FTFoundation.Core
 
           sceneHandle = -1;
 
-          object newSingleton = CreateService(service, _interface, sceneHandle, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
+          var outerSingletonContext = CurrentTransientContext;
+          CurrentTransientContext = new List<object>();
+
+          object newSingleton;
+          List<object> ownedBySingleton;
+          try
+          {
+            newSingleton = CreateService(service, _interface, sceneHandle, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
+          }
+          finally
+          {
+            // Restore even if construction threw. Otherwise CurrentTransientContext stays
+            // pointed at this abandoned list, silently misattributing whatever transient
+            // services get constructed next on this thread.
+            ownedBySingleton = CurrentTransientContext;
+            CurrentTransientContext = outerSingletonContext;
+          }
+
+          TrackOwnedTransients(newSingleton, ownedBySingleton);
           singletons.Add(_interface, newSingleton);
           return newSingleton;
 
@@ -111,14 +129,7 @@ namespace FTFoundation.Core
             CurrentTransientContext = outerContext;
           }
 
-          if (ownedTransients.Count > 0)
-          {
-            var cleanupList = new List<IServiceCleanup>(ownedTransients.Count);
-            foreach (var t in ownedTransients)
-              if (t is IServiceCleanup sc) cleanupList.Add(sc);
-            if (cleanupList.Count > 0)
-              transientDependencies[newScoped] = cleanupList;
-          }
+          TrackOwnedTransients(newScoped, ownedTransients);
 
           if (scopedDict != null) scopedDict.Add(_interface, newScoped);
           else scoped.Add(sceneHandle, new() { { _interface, newScoped } });
@@ -167,7 +178,20 @@ namespace FTFoundation.Core
               }
               else
               {
-                instance = CreateService(concreteType, elementType, sceneHandle, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
+                var outerSingletonCtx = CurrentTransientContext;
+                CurrentTransientContext = new List<object>();
+                List<object> ownedBySingletonCtx;
+                try
+                {
+                  instance = CreateService(concreteType, elementType, sceneHandle, ServiceTargetDataType.SINGLETON, ServiceTargetData.EmptyServiceTargetData());
+                }
+                finally
+                {
+                  ownedBySingletonCtx = CurrentTransientContext;
+                  CurrentTransientContext = outerSingletonCtx;
+                }
+
+                TrackOwnedTransients(instance, ownedBySingletonCtx);
                 multiSingletons[concreteType] = instance;
               }
               break;
@@ -190,21 +214,11 @@ namespace FTFoundation.Core
                 }
                 finally
                 {
-                  // Restore even if construction threw. Otherwise CurrentTransientContext stays
-                  // pointed at this abandoned list, silently misattributing whatever transient
-                  // services get constructed next on this thread.
                   ownedCtx = CurrentTransientContext;
                   CurrentTransientContext = outerCtx;
                 }
 
-                if (ownedCtx.Count > 0)
-                {
-                  var cleanupList = new List<IServiceCleanup>(ownedCtx.Count);
-                  foreach (var t in ownedCtx)
-                    if (t is IServiceCleanup sc) cleanupList.Add(sc);
-                  if (cleanupList.Count > 0)
-                    transientDependencies[instance] = cleanupList;
-                }
+                TrackOwnedTransients(instance, ownedCtx);
 
                 if (multiScopedDict != null) multiScopedDict[concreteType] = instance;
                 else multiScoped[sceneHandle] = new Dictionary<Type, object> { { concreteType, instance } };
@@ -235,31 +249,47 @@ namespace FTFoundation.Core
     {
       if (scoped.TryGetValue(sceneHandle, out var scopedDict))
       {
-        foreach (var instance in scopedDict.Values)
-        {
-          if (instance is IServiceCleanup sc) sc.OnCleanup();
-          if (transientDependencies.TryGetValue(instance, out var transients))
-          {
-            foreach (var t in transients) t.OnCleanup();
-            transientDependencies.Remove(instance);
-          }
-        }
+        foreach (var instance in scopedDict.Values) CleanupInstance(instance);
         scoped.Remove(sceneHandle);
       }
 
       if (multiScoped.TryGetValue(sceneHandle, out var multiScopedDict))
       {
-        foreach (var instance in multiScopedDict.Values)
-        {
-          if (instance is IServiceCleanup sc) sc.OnCleanup();
-          if (transientDependencies.TryGetValue(instance, out var transients))
-          {
-            foreach (var t in transients) t.OnCleanup();
-            transientDependencies.Remove(instance);
-          }
-        }
+        foreach (var instance in multiScopedDict.Values) CleanupInstance(instance);
         multiScoped.Remove(sceneHandle);
       }
+    }
+
+    // Called once, at the very start of ServiceProvider re-initialization, to tear down whichever
+    // singletons survived from a previous generation
+    internal static void CleanupSingletons()
+    {
+      foreach (var instance in singletons.Values) CleanupInstance(instance);
+      foreach (var instance in multiSingletons.Values) CleanupInstance(instance);
+    }
+
+    private static void CleanupInstance(object instance)
+    {
+      if (instance is IServiceCleanup sc) sc.OnCleanup();
+      if (transientDependencies.TryGetValue(instance, out var transients))
+      {
+        foreach (var t in transients) t.OnCleanup();
+        transientDependencies.Remove(instance);
+      }
+    }
+
+    // Shared by every SINGLETON/SCOPED construction path: records which of the transients
+    // constructed along the way implement IServiceCleanup, so CleanupInstance (above) can find and
+    // tear them down later without the owning service needing to do any of that bookkeeping itself.
+    private static void TrackOwnedTransients(object owner, List<object> ownedTransients)
+    {
+      if (ownedTransients.Count == 0) return;
+
+      var cleanupList = new List<IServiceCleanup>(ownedTransients.Count);
+      foreach (var t in ownedTransients)
+        if (t is IServiceCleanup sc) cleanupList.Add(sc);
+      if (cleanupList.Count > 0)
+        transientDependencies[owner] = cleanupList;
     }
 
     private static object CreateService(Type service, Type serviceInterface, int sceneHandle, ServiceTargetDataType dataType, ServiceTargetData target)
