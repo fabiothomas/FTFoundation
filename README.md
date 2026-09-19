@@ -29,6 +29,7 @@ FTFoundation lets you wire up services across assembly boundaries without any ma
   - [The [Config] Attribute](#the-config-attribute)
 - [Cleanup](#cleanup)
   - [IServiceCleanup](#iservicecleanup)
+- [Managed Code Stripping](#managed-code-stripping)
 - [Built-in Services](#built-in-services)
 
 ---
@@ -329,6 +330,27 @@ The container calls `OnCleanup()` automatically:
 | `SINGLETON`                                       | Not on normal scene transitions or app quit — only if the container itself re-initializes with this singleton still cached, which in practice means "Reload Domain" disabled in the Editor and a new Play session starting. |
 
 A `SINGLETON`'s owned `TRANSIENT` dependencies are cleaned up the same way a `SCOPED` service's are — you don't need to manually forward cleanup to them. For example, `DebugScreenService` and `LifetimeService` are both singletons that depend on `IDedicatedObjectService` (which implements `IServiceCleanup`); neither of them implements `IServiceCleanup` themselves, because the container already tears down their `IDedicatedObjectService` — and therefore the `GameObject` it owns — automatically.
+
+---
+
+## Managed Code Stripping
+
+FTFoundation discovers and constructs every service entirely through reflection: assembly scanning for `[Service]`, then `Expression`-compiled factories and property/field setters for injection. None of that is visible to IL2CPP's `UnityLinker` static reachability analysis, so under **Managed Stripping Level** `Medium` or `High` (IL2CPP's own default, `Minimal`, is comparatively safe), a service that is never directly `new`'d or referenced from a serialized scene/prefab can be stripped from the build even though the container uses it at runtime.
+
+Two mitigations are in place for this:
+
+- **`link.xml`** at the package root preserves the `FTFoundation` and `BuildInServices` assemblies wholesale (`preserve="all"`). This fully protects every built-in service, regardless of member-level nuance, with nothing for you to do.
+- **`[Service]`, `[Inject]`, and `[Config]` all derive from `UnityEngine.Scripting.PreserveAttribute`.** Since applying one of these is already required to participate in the framework, any class or property you decorate is automatically exempted from stripping too - no extra attribute or link.xml entry needed for your own services.
+
+One residual gap: `[Preserve]` on a class guarantees the type and its default constructor survive, but doesn't blanket-protect arbitrary members. A plain method-injection `Inject(...)` method carries no attribute of its own (it's matched by name, not by decoration), so on a class in your own assembly it's theoretically still at risk under `High` stripping. Built-in services are unaffected (the `link.xml` entry covers them completely). If you rely heavily on method injection in your own assembly and build with `High` stripping, add your own `link.xml` entry for that assembly as a safety net:
+
+```xml
+<linker>
+  <assembly fullname="YourAssemblyName" preserve="all" />
+</linker>
+```
+
+This is best verified directly: make a Development Build with IL2CPP and Managed Stripping Level set to `High`, and confirm your services still resolve.
 
 ---
 

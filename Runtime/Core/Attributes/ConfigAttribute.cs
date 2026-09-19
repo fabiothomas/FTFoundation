@@ -1,4 +1,5 @@
 using System;
+using UnityEngine.Scripting;
 
 namespace FTFoundation.Core
 {
@@ -7,7 +8,7 @@ namespace FTFoundation.Core
   /// before any service dependencies are injected.
   /// </summary>
   [AttributeUsage(AttributeTargets.Property)]
-  public sealed class ConfigAttribute : Attribute
+  public sealed class ConfigAttribute : PreserveAttribute
   {
     /// <summary>
     /// When true, a missing config value throws an error at startup instead of being silently skipped.

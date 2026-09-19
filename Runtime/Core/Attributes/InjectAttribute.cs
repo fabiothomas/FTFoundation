@@ -1,4 +1,5 @@
 using System;
+using UnityEngine.Scripting;
 
 namespace FTFoundation.Core
 {
@@ -6,7 +7,7 @@ namespace FTFoundation.Core
   /// This attribute defines that a property will have its content injected.
   /// </summary>
   [AttributeUsage(AttributeTargets.Property)]
-  public class InjectAttribute : Attribute
+  public class InjectAttribute : PreserveAttribute
   {
     /// <summary>
     /// When true, a missing or unregistered service injects null instead of throwing an exception.

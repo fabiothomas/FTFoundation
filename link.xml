@@ -1,0 +1,4 @@
+<linker>
+  <assembly fullname="FTFoundation" preserve="all" />
+  <assembly fullname="BuildInServices" preserve="all" />
+</linker>

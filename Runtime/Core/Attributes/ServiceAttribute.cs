@@ -1,4 +1,5 @@
 using System;
+using UnityEngine.Scripting;
 
 namespace FTFoundation.Core
 {
@@ -6,7 +7,7 @@ namespace FTFoundation.Core
   /// This attribute defines a service that can be injected
   /// </summary>
   [AttributeUsage(AttributeTargets.Class)]
-  public class ServiceAttribute : Attribute
+  public class ServiceAttribute : PreserveAttribute
   {
     public readonly Type Interface;
     public readonly ServiceType Type;
