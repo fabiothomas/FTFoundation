@@ -11,18 +11,21 @@ namespace FTFoundation.BuildInServices
 
     public bool Disabled { get; set; }
 
+    [HideInCallstack]
     public void Log(string message)
     {
       if (Disabled) return;
       foreach (var sink in LoggerSinks) sink.Log(message);
     }
 
+    [HideInCallstack]
     public void LogWarning(string message)
     {
       if (Disabled) return;
       foreach (var sink in LoggerSinks) sink.LogWarning(message);
     }
 
+    [HideInCallstack]
     public void LogError(string message)
     {
       if (Disabled) return;
