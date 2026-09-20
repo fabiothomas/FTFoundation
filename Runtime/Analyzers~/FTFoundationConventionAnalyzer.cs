@@ -14,6 +14,7 @@ namespace FTFoundation.Analyzers
   public sealed class FTFoundationConventionAnalyzer : DiagnosticAnalyzer
   {
     private const string AttributeNamespace = "FTFoundation.Core";
+    private const string DocsBaseUrl = "https://github.com/fabiothomas/FTFoundation/blob/main/docs/analyzers.md";
 
     public static readonly DiagnosticDescriptor DuplicateInjectMethodRule = new(
       id: "FTF0001",
@@ -24,7 +25,8 @@ namespace FTFoundation.Analyzers
       isEnabledByDefault: true,
       description: "A class may declare at most one non-public instance method named 'Inject'. " +
                    "FTFoundation resolves 'Inject' with Type.GetMethod(\"Inject\", ...) by name alone, " +
-                   "so multiple throw an AmbiguousMatchException at startup regardless of differing parameter lists.");
+                   "so multiple throw an AmbiguousMatchException at startup regardless of differing parameter lists.",
+      helpLinkUri: DocsBaseUrl + "#ftf0001");
 
     public static readonly DiagnosticDescriptor InjectPropertyMissingSetterRule = new(
       id: "FTF0002",
@@ -34,7 +36,8 @@ namespace FTFoundation.Analyzers
       DiagnosticSeverity.Warning,
       isEnabledByDefault: true,
       description: "Properties marked [Inject] or [Config] must have a setter. FTFoundation assigns it via " +
-                   "PropertyInfo.SetValue after construction, which throws at startup for a get-only property.");
+                   "PropertyInfo.SetValue after construction, which throws at startup for a get-only property.",
+      helpLinkUri: DocsBaseUrl + "#ftf0002");
 
     public static readonly DiagnosticDescriptor ServiceInterfaceMismatchRule = new(
       id: "FTF0003",
@@ -44,7 +47,8 @@ namespace FTFoundation.Analyzers
       DiagnosticSeverity.Warning,
       isEnabledByDefault: true,
       description: "The type passed to [Service] must be an interface the decorated class actually implements. " +
-                   "Resolving a service without a matching interface will fail an InvalidCastException-style failure at runtime.");
+                   "Resolving a service without a matching interface will fail an InvalidCastException-style failure at runtime.",
+      helpLinkUri: DocsBaseUrl + "#ftf0003");
 
     public static readonly DiagnosticDescriptor MissingParameterlessConstructorRule = new(
       id: "FTF0004",
@@ -54,7 +58,8 @@ namespace FTFoundation.Analyzers
       DiagnosticSeverity.Warning,
       isEnabledByDefault: true,
       description: "A [Service]-decorated class must be a concrete type with an accessible public parameterless constructor. " +
-                   "FTFoundation uses Expression.New(...) to create instances, which requires a public parameterless constructor.");
+                   "FTFoundation uses Expression.New(...) to create instances, which requires a public parameterless constructor.",
+      helpLinkUri: DocsBaseUrl + "#ftf0004");
 
     public static readonly DiagnosticDescriptor DirectServiceReferenceRule = new(
       id: "FTF0005",
@@ -65,7 +70,8 @@ namespace FTFoundation.Analyzers
       isEnabledByDefault: true,
       description: "FTFoundation only supports interface-based injection. A [Service]-decorated concrete type " +
                    "should never be referenced directly (new, typeof, casts, is/as, field/parameter/local types, " +
-                   "base lists, generic type arguments etc.) to ensure proper container usage and code-stripping safety.");
+                   "base lists, generic type arguments etc.) to ensure proper container usage and code-stripping safety.",
+      helpLinkUri: DocsBaseUrl + "#ftf0005");
 
     public static readonly DiagnosticDescriptor BuildGateNotCompiledOutRule = new(
       id: "FTF0006",
@@ -79,7 +85,8 @@ namespace FTFoundation.Analyzers
                    "build regardless of whether it can ever be selected there unless its declaration is also " +
                    "gated behind a matching #if (FTF0005 guarantees a [Service] type is never referenced except through its " +
                    "interface, so this is always safe to do). Ensuring the declaration is properly gated by #if " +
-                   "prevents it from being included in non-matching builds as dead code.");
+                   "prevents it from being included in non-matching builds as dead code.",
+      helpLinkUri: DocsBaseUrl + "#ftf0006");
 
     public static readonly DiagnosticDescriptor BuildGateMismatchRule = new(
       id: "FTF0007",
@@ -94,7 +101,8 @@ namespace FTFoundation.Analyzers
                    "That's wasteful, not wrong, since the container still filters it out at runtime. Skipped " +
                    "for an #if with #elif/#else branches (too ambiguous which branch is 'the' condition to " +
                    "compare), and a symbol outside FTFoundation's own set is treated as a free variable, so an " +
-                   "intentionally added extra condition may still surface here.");
+                   "intentionally added extra condition may still surface here.",
+      helpLinkUri: DocsBaseUrl + "#ftf0007");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
       ImmutableArray.Create(DuplicateInjectMethodRule, InjectPropertyMissingSetterRule, ServiceInterfaceMismatchRule, MissingParameterlessConstructorRule, DirectServiceReferenceRule, BuildGateNotCompiledOutRule, BuildGateMismatchRule);
