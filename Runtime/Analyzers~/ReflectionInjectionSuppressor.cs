@@ -10,8 +10,7 @@ namespace FTFoundation.Analyzers
   // Suppresses false-positive nullable/unused-member diagnostics caused by FTFoundation's
   // reflection-based injection: the compiler can't see a call to "Inject" (ServiceCompiler invokes
   // it via a compiled Expression, never from hand-written code), an assignment into an [Inject]/
-  // [Config] property (ConfigLoader/ServiceResolver assign them via PropertyInfo.SetValue after
-  // construction), or a field assigned from inside that same Inject() method — so all three look
+  // [Config] property, or a field assigned from inside that same Inject() method. So all three look
   // like real problems even though the framework always populates them before any other code runs.
   [DiagnosticAnalyzer(LanguageNames.CSharp)]
   public sealed class ReflectionInjectionSuppressor : DiagnosticSuppressor
@@ -99,8 +98,7 @@ namespace FTFoundation.Analyzers
       && methodSymbol.DeclaredAccessibility != Accessibility.Public;
 
     // Only looks at top-level statements of Inject()'s own body. Deliberately not recursing into
-    // if/for/try/nested blocks, so a match here really does mean "assigned unconditionally", not
-    // just "assigned somewhere on some path".
+    // if/for/try/nested blocks, so a match here really does mean "assigned unconditionally".
     private static bool IsUnconditionallyAssignedByInjectMethod(IFieldSymbol fieldSymbol, SuppressionAnalysisContext context)
     {
       var injectMethod = fieldSymbol.ContainingType.GetMembers("Inject")

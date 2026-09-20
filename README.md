@@ -21,6 +21,7 @@ FTFoundation lets you wire up services across assembly boundaries without any ma
 - [Service Selection](#service-selection)
   - [Build Profile Filtering](#build-profile-filtering)
   - [Platform Filtering](#platform-filtering)
+  - [Excluding From the Build Entirely](#excluding-from-the-build-entirely)
   - [Priority](#priority)
   - [Fallback Services](#fallback-services)
   - [Eager Instantiation](#eager-instantiation)
@@ -142,15 +143,20 @@ As with `[Inject(Optional = true)]`, the parameter must be able to hold a null r
 >
 > **Placement matters for scope:** Unity applies a `RoslynAnalyzer`-labeled DLL only to the assembly whose folder (the one containing its `.asmdef`) it lives under, plus any assembly that references that one. The DLL lives under `Runtime/` (`FTFoundation.asmdef`'s folder) specifically so its scope covers every assembly that references `FTFoundation` — which, by construction, is every assembly that could ever declare an `Inject()` method or an `[Inject]`/`[Config]` property. Don't move it under `Editor/`; that would scope it to `FTFoundation.Editor` alone, which nothing else references.
 >
-> **It also catches four real mistakes at compile time**, all of which otherwise compile fine and only fail once the container actually resolves the service:
+> **It also catches seven real mistakes at compile time**, all of which otherwise compile fine and only fail once the container actually resolves the service:
 > - `FTF0001` — a class declares more than one non-public instance method named `Inject`. `Type.GetMethod("Inject", ...)` matches by name alone, so this throws `AmbiguousMatchException` at startup regardless of the methods having different parameter lists.
 > - `FTF0002` — a property carries `[Inject]` or `[Config]` but has no setter. `PropertyInfo.SetValue` needs one; a get-only property throws at injection time.
 > - `FTF0003` — a class is registered with `[Service(typeof(TInterface), ...)]` but doesn't actually implement `TInterface` (directly or via a base class).
 > - `FTF0004` — a `[Service]`-decorated class is abstract, or has no accessible public parameterless constructor. `ServiceCompiler.PrecompileFactory` builds every instance with `Expression.New(type)`, which requires exactly that.
+> - `FTF0005` — a `[Service]`-decorated concrete type is referenced directly (`new`, `typeof`, a cast, `is`/`as`, a field/parameter/local typed as the concrete class, a base list, a generic type argument) instead of through its interface. FTFoundation only supports interface-based injection, so this is always a design mistake, not just a style nit — and it's also what makes it safe to assume a `[Service]` type is only ever reachable via the container's own reflection, which build-stripping tooling can lean on. `nameof(...)` is exempt, since it erases to a string constant with no runtime dependency on the type. A reference from within the service's own declaration - including a private nested helper type, e.g. a `MonoBehaviour` that needs to call back into members the interface doesn't expose (see `LifetimeService`/`LifetimeServiceHelper`) - is also exempt, since whatever removes the type for build-stripping removes everything declared inside it too. A type nested inside a `[Service]` class purely to hold data (not to help implement it) doesn't get this exemption once referenced from outside - that's a sign the data type belongs on its own, independent of the service.
+> - `FTF0006` — a `[ServiceBuildProfile]`/`[ServiceBuildPlatform]`-restricted service isn't wrapped in any `#if`, so it still compiles into every build as dead code instead of being excluded from non-matching ones entirely. See [Excluding From the Build Entirely](#excluding-from-the-build-entirely) for the symbol mapping and the exact expression the warning suggests.
+> - `FTF0007` — an existing `#if` no longer covers every build the attribute allows, most likely because the attribute changed (e.g. a platform was added) without updating the `#if` to match. This is the dangerous direction specifically: the service would silently never be selected in whichever builds the `#if` now wrongly excludes, with no error anywhere - just a service that's mysteriously missing. It brute-forces every combination of whatever symbols the two expressions actually reference (always small in practice) rather than attempting general boolean simplification, so it's exact, not heuristic - but it only checks that direction; a `#if` that's *broader* than the attribute requires is wasteful, not wrong (the container still filters it at runtime), so that's not flagged. Skipped entirely for an `#if` with `#elif`/`#else` branches, and a symbol outside FTFoundation's own set (e.g. your own extra flag deliberately ANDed in) is treated as a free variable, so an intentional extra restriction can still surface here - narrow the attribute to match rather than treating that as a bug in the check.
 >
-> All four are reported as warnings, not errors, so they won't block your build.
+> All seven are reported as warnings, not errors, so they won't block your build.
 >
 > **Do not bump `Microsoft.CodeAnalysis.CSharp` past 3.8** in that `.csproj` — Unity's own bundled Roslyn only supports analyzers built against 3.8, and a newer version compiles fine but fails to load in Unity ("Unable to resolve reference 'Microsoft.CodeAnalysis'..."). After rebuilding, the DLL's import settings need: the `RoslynAnalyzer` label, "Any Platform" and "Editor" both unchecked (it's compile-time tooling, not a runtime dependency), and "Validate References" unchecked (Unity's static plugin-reference checker can't see the Roslyn assemblies the compiler host loads internally, so it will otherwise report the same false error even though the version is correct).
+>
+> **`FTF0006` and `FTF0007` both have a one-click fix**: `Runtime/Analyzers/FTFoundation.Analyzers.CodeFixes.dll`, built from `Runtime/Analyzers~/CodeFixes/FTFoundation.Analyzers.CodeFixes.csproj`, inserts the `#if`/`#endif` for `FTF0006` and replaces the stale condition in place for `FTF0007` - both computed the same way the diagnostic message already shows. It's a separate DLL/project from the main analyzer on purpose: a `CodeFixProvider` needs `Microsoft.CodeAnalysis.CSharp.Workspaces`, which only an IDE loads, never the compiler - bundling that dependency into the same assembly the compiler itself loads for every compile risks exactly the kind of "unable to resolve reference" failure called out above, just for a different assembly. Both DLLs carry the `RoslynAnalyzer` label and the same import settings. Whether the fix actually shows up as a lightbulb depends on your editor: it should work in **Visual Studio** and **Rider** (Unity's own officially supported IDEs for this feature). In **VS Code**, it depends on which C# backend is active - the legacy OmniSharp-based "C#" extension needs `"omnisharp.enableRoslynAnalyzers": true` set explicitly (off by default), and the newer **C# Dev Kit** has had reported gaps with third-party analyzer/code-fix visibility in general, unrelated to Unity specifically. Both diagnostics always work everywhere regardless - the code fixes are a convenience on top, not something to depend on.
 
 ### Multi-Service Injection
 
@@ -213,6 +219,56 @@ public class ConsoleLoggerService : ILoggerSink { ... }
 ```
 
 Group flags (`Desktop`, `Mobile`, `Console`, `Web`) and specific flags (`Windows`, `macOS`, `Android`, `iOS`, etc.) are both supported.
+
+### Excluding From the Build Entirely
+
+`[ServiceBuildProfile]`/`[ServiceBuildPlatform]` alone only filters candidates at container startup - an excluded service is still compiled into every build as dead code. To remove it from a non-matching build's compiled output entirely, wrap the class in an `#if` using the matching Unity scripting define(s):
+
+```csharp
+#if UNITY_EDITOR && UNITY_STANDALONE
+[ServiceBuildProfile(BuildTargetProfile.Editor)]
+[ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
+[Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
+public class ConsoleLoggerService : ILoggerSink { ... }
+#endif
+```
+
+This is safe by construction: `FTF0005` guarantees a `[Service]`-decorated type is never referenced except through its interface, so nothing can be left dangling by a class simply not existing in a given compile. The attribute stays regardless - it's still what the container uses to pick among whatever candidates *did* survive compilation for this build.
+
+Symbol mapping (`BuildProfileDetector`/`BuildPlatformDetector` already use exactly these):
+
+| `BuildTargetProfile` | `#if` symbol |
+| --- | --- |
+| `Editor` | `UNITY_EDITOR` |
+| `Development` | `DEVELOPMENT_BUILD` |
+| `Staging` | `STAGING_BUILD` |
+| `Production` | has no define of its own - it's "none of the others" (see below) |
+
+| `BuildTargetPlatform` | `#if` symbol |
+| --- | --- |
+| `Desktop` | `UNITY_STANDALONE` |
+| `Mobile` | `UNITY_ANDROID \|\| UNITY_IOS` |
+| `Console` | `UNITY_PS4 \|\| UNITY_PS5 \|\| UNITY_GAMECORE \|\| UNITY_XBOXONE \|\| UNITY_SWITCH` |
+| `Web` | `UNITY_WEBGL` |
+| `Windows` / `macOS` / `Linux` | `UNITY_STANDALONE_WIN` / `_OSX` / `_LINUX` |
+| `Android` / `iOS` / `Switch` | `UNITY_ANDROID` / `UNITY_IOS` / `UNITY_SWITCH` |
+| `PlayStation` / `Xbox` | `UNITY_PS4 \|\| UNITY_PS5` / `UNITY_GAMECORE \|\| UNITY_XBOXONE` |
+
+> Console/Xbox/PlayStation symbol names have shifted across Unity versions (GameCore vs. the older per-console defines) - double check these against the Unity manual for the version you're on before relying on them.
+
+`BuildProfileDetector` only ever defines one of `Editor`/`Development`/`Staging`/`Production` at a time, so combining `Production` with some subset of the other three is always exactly equivalent to negating whichever ones are *missing* - which is usually far simpler than spelling `Production` out as its own triple negation and OR-ing it in. Both the `FTF0006` message and its code fix compute this automatically:
+
+| Attribute | Generated `#if` |
+| --- | --- |
+| `Production \| Staging \| Editor` (i.e. everything except `Development`) | `!DEVELOPMENT_BUILD` |
+| `Production` alone | `!UNITY_EDITOR && !DEVELOPMENT_BUILD && !STAGING_BUILD` |
+| `Production \| Editor` (missing `Development` and `Staging`) | `!DEVELOPMENT_BUILD && !STAGING_BUILD` |
+
+Combined profile+platform expressions are also only parenthesized when actually needed (i.e. one side is a multi-term `\|\|`) - `FileLoggerService`'s real attributes (`Production \| Staging \| Editor` + `Desktop`) generate `#if !DEVELOPMENT_BUILD && UNITY_STANDALONE`, not a parenthesized, un-simplified mess.
+
+> **Editor caveat:** this is faithful for real player builds, but can diverge from the runtime check specifically *in the Editor*. `BuildPlatformDetector` reports `Desktop` in the Editor based on the host OS running Unity - always true on a PC/Mac/Linux machine. The `UNITY_STANDALONE` compile symbol instead tracks whichever Build Target is currently selected in Build Settings, even while just pressing Play. A dev with Build Target set to Android while working in the Editor would silently exclude a `Desktop`-gated service under `#if`, even though the runtime-only check would still include it today. This doesn't affect real platform builds, only that Editor edge case.
+
+The analyzer flags a restricted service that isn't wrapped in any `#if` at all (`FTF0006`), and includes the exact expression to use in the warning message - it can't verify a hand-written `#if` actually matches the attribute, only that one is present.
 
 ### Priority
 

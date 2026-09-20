@@ -3,6 +3,7 @@ using FTFoundation.BuildInReferences;
 
 namespace FTFoundation.BuildInServices
 {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
   [ServiceBuildProfile(BuildTargetProfile.Editor | BuildTargetProfile.Development)]
   [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
   [ServicePriority(0)]
@@ -27,4 +28,5 @@ namespace FTFoundation.BuildInServices
       DebugScreen.Print(FormatMessage(message, ErrorColor));
     }
   }
+#endif
 }

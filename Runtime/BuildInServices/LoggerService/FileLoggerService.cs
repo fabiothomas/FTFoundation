@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace FTFoundation.BuildInServices
 {
+#if !DEVELOPMENT_BUILD && UNITY_STANDALONE
   [ServiceBuildProfile(BuildTargetProfile.Production | BuildTargetProfile.Staging | BuildTargetProfile.Editor)]
   [ServiceBuildPlatform(BuildTargetPlatform.Desktop)]
   [Service(typeof(ILoggerSink), ServiceType.TRANSIENT)]
@@ -58,4 +59,5 @@ namespace FTFoundation.BuildInServices
       return $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] [{level}] {message}";
     }
   }
+#endif
 }

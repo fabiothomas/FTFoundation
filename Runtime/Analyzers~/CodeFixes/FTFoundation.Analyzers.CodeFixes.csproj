@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <!-- Deliberately NOT EnforceExtendedAnalyzerRules: 
+         This CodeFixProvider is only ever loaded by an IDE, never by the compiler.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned to 3.8, matching FTFoundation.Analyzers.csproj, since this ships alongside it into
+         the same Unity project and both need to agree with Unity's bundled Roslyn version. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="3.8.0" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FTFoundation.Analyzers.csproj" Private="false" />
+  </ItemGroup>
+
+</Project>

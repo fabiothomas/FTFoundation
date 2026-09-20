@@ -9,7 +9,17 @@
          published independently on NuGet with their own release cadence. This one ships bundled
          with FTFoundation's own versioning instead, so that convention doesn't apply here. -->
     <NoWarn>$(NoWarn);RS2008</NoWarn>
+    <!-- This folder also holds FTFoundation.Analyzers.CodeFixes.csproj (a separate assembly
+         Listing this project's files explicitly instead of relying on directory-exclusion behavior. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="FTFoundationConventionAnalyzer.cs" />
+    <Compile Include="ReflectionInjectionSuppressor.cs" />
+    <Compile Include="BuildGateSymbols.cs" />
+    <Compile Include="BuildGateDirectives.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Pinned to 3.8 (not a later version) because Unity's own bundled Roslyn only supports

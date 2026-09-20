@@ -12,6 +12,7 @@ using UnityEngine.UI;
 
 namespace FTFoundation.BuildInServices
 {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
   [InstantiateOnStartup]
   [ServiceBuildProfile(BuildTargetProfile.Editor | BuildTargetProfile.Development)]
   [Service(typeof(IDebugScreenService), ServiceType.SINGLETON)]
@@ -644,4 +645,5 @@ namespace FTFoundation.BuildInServices
       }
     }
   }
+#endif
 }
