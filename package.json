@@ -4,7 +4,7 @@
     "displayName": "FT Foundation",
     "description": "Foundational Unity package for assembly separation trough service injection",
     "unity": "6000.0",
-    "documentationUrl": "https://github.com/fabiothomas/FTFoundation/blob/main/README.md",
+    "documentationUrl": "https://github.com/fabiothomas/FTFoundation/blob/main/docs/README.md",
     "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.2.1",
         "com.unity.inputsystem": "1.19.0",

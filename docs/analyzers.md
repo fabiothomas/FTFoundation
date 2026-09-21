@@ -1,3 +1,5 @@
+[← Back to docs index](README.md)
+
 # Analyzer Reference
 
 FTFoundation resolves `Inject()` methods, `[Inject]`/`[Config]` properties, and `[Service]` types
