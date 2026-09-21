@@ -14,7 +14,7 @@ namespace FTFoundation.Analyzers
   public sealed class FTFoundationConventionAnalyzer : DiagnosticAnalyzer
   {
     private const string AttributeNamespace = "FTFoundation.Core";
-    private const string DocsBaseUrl = "https://github.com/fabiothomas/FTFoundation/blob/main/docs/analyzers.md";
+    private const string DocsBaseUrl = "https://github.com/fabiothomas/FTFoundation/blob/main/Documentation~/analyzers.md";
 
     public static readonly DiagnosticDescriptor DuplicateInjectMethodRule = new(
       id: "FTF0001",

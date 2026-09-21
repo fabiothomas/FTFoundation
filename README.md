@@ -20,13 +20,13 @@ That's it. The container bootstraps itself automatically before the splash scree
 
 | Page | Covers |
 | --- | --- |
-| [Defining Services](docs/defining-services.md) | `[Service]`, lifetimes, assembly registration, the Active Service Overview window |
-| [Injecting Dependencies](docs/injecting-dependencies.md) | Property/method/multi-service injection, `MonoBehaviour`s, IDE warnings |
-| [Service Selection](docs/service-selection.md) | Build profile/platform filtering, excluding a service from a build entirely, priority, fallbacks |
-| [Configuration](docs/configuration.md) | Layered `appsettings*.json` files and the `[Config]` attribute |
-| [Cleanup](docs/cleanup.md) | `IServiceCleanup` and when the container calls it |
-| [Managed Code Stripping](docs/managed-code-stripping.md) | IL2CPP stripping risk and the mitigations already in place |
-| [Built-in Services](docs/built-in-services.md) | The services FTFoundation ships out of the box |
-| [Analyzer Reference](docs/analyzers.md) | Every diagnostic, the code fixes, and the build-gate symbol tables |
+| [Defining Services](Documentation~/defining-services.md) | `[Service]`, lifetimes, assembly registration, the Active Service Overview window |
+| [Injecting Dependencies](Documentation~/injecting-dependencies.md) | Property/method/multi-service injection, `MonoBehaviour`s, IDE warnings |
+| [Service Selection](Documentation~/service-selection.md) | Build profile/platform filtering, excluding a service from a build entirely, priority, fallbacks |
+| [Configuration](Documentation~/configuration.md) | Layered `appsettings*.json` files and the `[Config]` attribute |
+| [Cleanup](Documentation~/cleanup.md) | `IServiceCleanup` and when the container calls it |
+| [Managed Code Stripping](Documentation~/managed-code-stripping.md) | IL2CPP stripping risk and the mitigations already in place |
+| [Built-in Services](Documentation~/built-in-services.md) | The services FTFoundation ships out of the box |
+| [Analyzer Reference](Documentation~/analyzers.md) | Every diagnostic, the code fixes, and the build-gate symbol tables |
 
-See [`docs/README.md`](docs/README.md) for the same list with a longer description of each page.
+See [`Documentation~/README.md`](Documentation~/README.md) for the same list with a longer description of each page.
