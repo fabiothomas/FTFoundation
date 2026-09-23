@@ -1,3 +1,5 @@
+![FTFoundation](Resources/ft-foundation.logo.svg)
+
 # FTFoundation
 
 A lightweight, attribute-driven dependency injection framework for Unity that aims to split upp the code in seperate de-coupled modules defined with assembly defenitions.
