@@ -2,7 +2,7 @@
 
 # FTFoundation
 
-A lightweight, attribute-driven dependency injection framework for Unity that aims to split upp the code in seperate de-coupled modules defined with assembly defenitions.
+A lightweight, attribute-driven dependency injection framework for Unity that aims to split up the code into separate, de-coupled modules defined with assembly definitions.
 
 FTFoundation lets you wire up services across assembly boundaries without any manual registration code. Injection actions and service factories are pre-compiled once at startup using `System.Linq.Expressions`, so there is no per-frame or per-injection reflection overhead.
 
